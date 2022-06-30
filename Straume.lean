@@ -171,26 +171,57 @@ def disprove (x : FalseNegative) (y : FalseNegative) : FalseNegative :=
 /- Kind of like or, keeping the false positive with the highest confidence. -/
 def convince := anti disprove
 
-/- An atom to say "no" to a less-than relationship. -/
 structure Incomparable
 
+inductive POrdering where
+| incomparable
+| eq -- We use eq from BEq, so it's always certain
+| lt : FalsePositive → POrdering
+| gt : FalsePositive → POrdering
+
 /-
-Boolean probabilistic partial ordering for timestamped events.
+Partial probabilistic ordering for timestamped events.
 The probabilistic bit is needed for the forward compatibility with Bloom Clocks.
+
+NB!
+The wording is important.
+Partial probabilistic ordering means that it's certainly partial and perhaps ordered.
+If something is incomparable, you can be sure that the preimages of it are incomparable, if something is less than something else, you are given a confidence in the ordering.
 -/
-class BProbabilisticPartialOrder (α : Type u) [BEq α] where
+class PartialPOrdering (α : Type u) [BEq α] where
   lt : α → α → PSum Incomparable FalsePositive
   le : α → α → PSum Incomparable FalsePositive :=
-  fun x y => match lt x y with
-             | .inl _ => PSum.inl Incomparable.mk
-             | .inr z => PSum.inr $ assure z (forSure $ BEq.beq x y)
+    fun x y => match lt x y with
+               | .inl _ => PSum.inl Incomparable.mk
+               | .inr z => PSum.inr $ assure z (forSure $ BEq.beq x y)
+  compare : α → α → POrdering :=
+    fun x y => match le x y with
+               | .inl _ => POrdering.incomparable
+               | .inr .no => match le y x with
+                             | .inl _ => POrdering.incomparable
+                             | .inr .no => POrdering.eq
+                             | .inr z => POrdering.gt z
+               | .inr z => POrdering.lt z
 
 -- TODO: add theorems? Extend PartialOrder from mathlib? Idk.
+
+instance ord2pord [BEq α] [Ord α] : PartialPOrdering α where
+  lt x y := .inr $ forSure $ Ordering.lt == Ord.compare x y
+
+-- TODO: Namespace Straume.Clock.Logical
+
+class Clock (α : Type u) [BEq α] [PartialPOrdering α] where
+  tick : α → α
+  merge : α → α → α
 
 /-
 The simplest logical clock.
 -/
-structure Wristwatch
+structure Wristwatch where
+  face : Nat
+  deriving Repr, BEq, Ord
+
+instance : PartialPOrdering Wristwatch := ord2pord
 
 /-
 
