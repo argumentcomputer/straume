@@ -223,6 +223,10 @@ structure Wristwatch where
 
 instance : PartialPOrdering Wristwatch := ord2pord
 
+instance : Clock Wristwatch where
+  tick x := Wristwatch.mk $ 1 + x.face
+  merge x y := Wristwatch.mk $ 1 + max x.face y.face
+
 /-
 
 -/
