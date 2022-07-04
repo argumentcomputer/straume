@@ -1,4 +1,5 @@
 import Init.System.IO
+import Straume.Zeptoparsec
 
 namespace Straume
 /-
@@ -7,13 +8,14 @@ namespace Straume
       boxed stuff is implemented
 
  ┌───────┐
- │  Real │             ┌──────┐
- │ World ├─Driver─┬──► │Stream│
- └───────┘        │    └──────┘
+ │  Real │             ┌───────┐
+ │ World ├─Driver─┬──► │Stream*|
+ └───────┘        │    └───────┘
                   │
                   │
                   └──►  Async Stream
 
+*- Stream exposes a synchronous interface for the asynchronous backend.
 
 
            ┌──────┐
@@ -229,7 +231,7 @@ instance : Clock Wristwatch where
   tick x := Wristwatch.mk $ 1 + x.face
   merge x y := Wristwatch.mk $ 1 + max x.face y.face
 
-class TimeT (m : Type u → Type v) (σ : Type k) (T : Type u) (δ : Type u) [Inhabited σ] [Monad m] where
+class Time (m : Type u → Type v) (σ : Type k) (T : Type u) (δ : Type u) [Inhabited σ] [Monad m] where
   τ : σ → m T
   Δτ : T → T → δ
   Δn (x₀ : T) : m δ :=
@@ -246,9 +248,27 @@ structure NSec where
 
 open IO
 
-instance : TimeT BaseIO Unit MSec MSec where
+instance : Time BaseIO Unit MSec MSec where
   τ _ := MSec.mk <$> IO.monoMsNow
   Δτ x₀ x₁ := MSec.mk $ x₁.qty - x₀.qty
+
+/-
+A way to terminate a stream.
+`eos` means "end of stream", expected one.
+`timeout` means that the Lean runner itself timed out (note that ioerr has `timeExpired` constructor, which is the same, but for OS timeouts)
+`ioerr` means that we were running the stream as an IO task, and we got an IO error while performing it.
+
+TODO: do we want to let the user control max chunk size and error out if it's too big?
+-/
+inductive Terminator where
+| eos
+| timeout
+| ioerr : IO.Error → Terminator
+
+structure Chunk (α : Type u) where
+  data : α × Option Terminator
+
+class Stream (a : Type u) (mₐ : Type u → Type v) [Inhabited σₜ] [Monad mₜ] [Time mₜ σₜ T δₜ] [BEq αₖ] [PartialPOrdering αₖ] [Clock αₖ]
 
 /-
 

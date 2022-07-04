@@ -1,6 +1,6 @@
 import Lake
 open Lake DSL
 
-package straume {
-  -- add configuration options here
+package Straume {
+  defaultFacet := PackageFacet.oleans -- no executable! Pure cargo cult!
 }
