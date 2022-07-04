@@ -1,3 +1,5 @@
+import Init.System.IO
+
 namespace Straume
 /-
      The big idea of this library
@@ -226,6 +228,27 @@ instance : PartialPOrdering Wristwatch := ord2pord
 instance : Clock Wristwatch where
   tick x := Wristwatch.mk $ 1 + x.face
   merge x y := Wristwatch.mk $ 1 + max x.face y.face
+
+class TimeT (m : Type u → Type v) (σ : Type k) (T : Type u) (δ : Type u) [Inhabited σ] [Monad m] where
+  τ : σ → m T
+  Δτ : T → T → δ
+  Δn (x₀ : T) : m δ :=
+    τ default >>=
+      fun x₁ => pure $ Δτ x₀ x₁
+
+structure MSec where
+  qty : Nat
+  deriving Repr, BEq, Ord, Inhabited
+
+structure NSec where
+  qty : Nat
+  deriving Repr, BEq, Ord, Inhabited
+
+open IO
+
+instance : TimeT BaseIO Unit MSec MSec where
+  τ _ := MSec.mk <$> IO.monoMsNow
+  Δτ x₀ x₁ := MSec.mk $ x₁.qty - x₀.qty
 
 /-
 
