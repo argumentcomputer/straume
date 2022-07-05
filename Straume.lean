@@ -226,6 +226,7 @@ structure Wristwatch where
   deriving Repr, BEq, Ord
 
 instance : PartialPOrdering Wristwatch := ord2pord
+instance : PartialPOrdering Nat := ord2pord
 
 instance : Clock Wristwatch where
   tick x := Wristwatch.mk $ 1 + x.face
@@ -269,6 +270,16 @@ structure Chunk (α : Type u) where
   data : α × Option Terminator
 
 class Stream (a : Type u) (mₐ : Type u → Type v) [Inhabited σₜ] [Monad mₜ] [Time mₜ σₜ T δₜ] [BEq αₖ] [PartialPOrdering αₖ] [Clock αₖ]
+
+-- class Testme (a : Type u) [Inhabited α] [BEq β] [Ord β] where
+-- class Testme (a : Type u) [Inhabited α] [BEq β] where
+
+class Testme (a : Type u) [Inhabited α] [BEq β] [PartialPOrdering β] where
+  foo : a → β → α
+
+-- instance : @Testme (List Nat) Nat Char where
+instance : Testme Char where
+  foo (_x : Char) (_z : Nat) : (y : List Nat) := default
 
 /-
 
