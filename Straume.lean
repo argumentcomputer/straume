@@ -225,11 +225,24 @@ structure Wristwatch where
   face : Nat
   deriving Repr, BEq, Ord
 
-instance : PartialPOrdering Wristwatch := ord2pord
+instance instPPOrderingWristwatch : PartialPOrdering Wristwatch := ord2pord
 
-instance : Clock Wristwatch where
+instance instClockWristwatch : Clock Wristwatch where
   tick x := Wristwatch.mk $ 1 + x.face
   merge x y := Wristwatch.mk $ 1 + max x.face y.face
+
+/-
+Position counter in a stream is a clock such that every tick advances the universal time, thus merging adds.
+-/
+structure Pos where
+  x : Nat
+  deriving Repr, BEq, Ord
+
+instance instPPOrderingGodswatch : PartialPOrdering Pos := ord2pord
+instance instClockGodswatch : Clock Pos where
+  tick p := Pos.mk $ 1 + p.x
+  merge p q := Pos.mk $ p.x + q.x
+
 
 class Time (m : Type u → Type v) (σ : Type k) (T : Type u) (δ : Type u) [Inhabited σ] [Monad m] where
   τ : σ → m T
@@ -237,6 +250,28 @@ class Time (m : Type u → Type v) (σ : Type k) (T : Type u) (δ : Type u) [Inh
   Δn (x₀ : T) : m δ :=
     τ default >>=
       fun x₁ => pure $ Δτ x₀ x₁
+
+-- structure TimeS (m : Type u → Type v)
+--                 (σ : Type k)
+--                 (T : Type u)
+--                 (δ : Type u)
+--                 [Inhabited σ]
+--                 [Monad m]
+--                 [it : Time m σ T δ] where
+--   τ : σ → m T := it.τ
+--   Δτ : T → T → δ := it.Δτ
+--   Δn (x₀ : T) : m δ :=
+--     τ default >>=
+--       fun x₁ => pure $ Δτ x₀ x₁
+
+-- structure ThreeTypesInAStructSayNothingOfAMonad (s : Type) (t : Type → Type t) (a : Type) (b : Type) where
+--   f : s → t a
+--   g : a → a → b
+--   ψ : a → t b
+--   typeof_s := s
+--   typeof_t := t
+--   typeof_a := a
+--   typeof_b := b
 
 structure MSec where
   qty : Nat
@@ -265,11 +300,101 @@ inductive Terminator where
 | timeout
 | ioerr : IO.Error → Terminator
 
+/-
+
+Suppose we have a variable length binary protocol such that the message length is encoded as a three bit integer.
+
+ |-3-|----n----|-3-|---|
+ | 7 | 1001111 | 1 | 0 |
+
+Naturally, chunks are:
+
+ 1001111, .none
+
+ 001, .some eos
+
+and are of type `Chunk (List Bit)`.
+
+But if we insist, we consume it bit by bit by typing it as `Chunk Bit`:
+
+ | 111 1001111 011 001 |
+
+Chunks are
+
+ 1, .none
+ 1, .none
+ 1, .none
+ 1, .none
+ 0, .none
+ ...
+ 1, .some eos
+
+I hope it's clear. 🙇
+-/
 structure Chunk (α : Type u) where
   data : α × Option Terminator
 
-class Stream (a : Type u) (mₐ : Type u → Type v) [Inhabited σₜ] [Monad mₜ] [Time mₜ σₜ T δₜ] [BEq αₖ] [PartialPOrdering αₖ] [Clock αₖ]
+-- class Stream (a : Type uₐ) (mₐ : Type uₐ → Type vₐ)
+--              (σₜ : Type uₜ) (mₜ : Type uₜ → Type vₜ) [Inhabited σₜ] [Monad mₜ] [Time mₜ σₜ T δₜ]
+--              (αₖ : Type uₖ) [BEq αₖ] [PartialPOrdering αₖ] [Clock αₖ]
+--              (buf : Nat := 2048)
+--              (αₖ2 := Wristwatch) [BEq αₖ2] [PartialPOrdering αₖ2] [Clock αₖ2]
+--              (αₖ3 := Wristwatch) [BEq αₖ3] [PartialPOrdering αₖ3] [Clock αₖ3]
+--              where
+--   /- "Give me a stream and a natural, and I'll produce two streams: a finite one with the desired amount of chunks, and the rest. " -/
+--   splitAt (stream : mₐ a) (n : Nat := buf) : mₐ a × mₐ a
+--   buffer := splitAt
+
+universe u
+universe v
 
 /-
+Simplest *practical* stream! It has strictly one source, hecnce the name.
 
+✅ We are aware of the risks of using named instances.
+
+But the alternative would be this:
+
+```
+  τ {mₜ : Type uₜ → Type uᵥ} : σ → mₜ T
+  Δτ : T → T → δ
+```
+
+But then, how would lean understand that T is T? 🙅
+
+This structure is really stupid. It doesn't know it's a stream. All the stuff happens in the functions like `splitAt`.
+Note that they are generic in the wrapper-monad and in a particular time implementation.
+So you can test everything under simulation outside IO.
 -/
+structure Uni (m : Type u → Type v) (a : Type u) where
+  timestamp : (mₜ : Type p → Type q) → σ → mₜ T
+  pos : Pos
+  buf : Nat := 2048
+
+-- timestamp := fun (it : Time s t a b) => it.τ
+
+#check Uni.mk
+
+abbrev Uni! m a := Uni m (Chunk a)
+abbrev Uni? m a := Uni m $ Option (Chunk a)
+
+def arrN (s : Uni! m a) (n : Nat := s.buf) : m (Array (Chunk a) × (Uni? m a)) := sorry
+def arrWhile (s : Uni! m a) (P : Chunk a → Bool) : m ((Uni? m a) × (Uni? m a)) := sorry
+
+-- TODO: Unwrap Array
+def takeN (s : Uni! m a) := arrN s
+def take1 (x : Uni! m a) := arrN x 1
+
+def unUni (s : Uni! m a) : m (Chunk a) := sorry
+
+#check IO.getStdin
+#check FS.Stream
+
+/-
+Some cool functions for a cooler day. It's too hot today.
+-/
+-- def splitAt (s : Uni! m a) (n : Nat := s.buf) : m ((Uni! m a) × (Uni? m a)) := sorry
+-- def span (s : Uni! m a) (P : Chunk a → Bool) : m ((Uni? m a) × (Uni? m a)) := sorry
+
+-- def listN (s : Uni! m a) (n : Nat := s.buf) : m (List (Chunk a) × (Uni? m a)) := sorry
+-- def listWhile (s : Uni! m a) (P : Chunk a → Bool) : m ((Uni? m a) × (Uni? m a)) := sorry
