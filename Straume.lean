@@ -246,19 +246,24 @@ structure Uni (m : Type u → Type v) (a : Type u) where
   pos : Pos
   buf : Nat := 2048
 
--- timestamp := fun (it : Time s t a b) => it.τ
-
 #check Uni.mk
 
 abbrev Uni! m a := Uni m (Chunk a)
 abbrev Uni? m a := Uni m $ Option (Chunk a)
 
-def arrN (s : Uni! m a) (n : Nat := s.buf) : m (Array (Chunk a) × (Uni? m a)) := sorry
-def arrWhile (s : Uni! m a) (P : Chunk a → Bool) : m ((Uni? m a) × (Uni? m a)) := sorry
+class MonadEmit (m : Type u → Type v) (source : Type u) (value : Type u) where
+  askFrom : m source → Nat → m (source × value)
 
--- TODO: Unwrap Array
-def takeN (s : Uni! m a) := arrN s
-def take1 (x : Uni! m a) := arrN x 1
+instance : MonadEmit IO IO.FS.Handle ByteArray where
+  askFrom (src : IO IO.FS.Handle) (n : Nat) := do
+    let handler <- src
+    let bs <- IO.FS.Handle.read handler (USize.ofNat n)
+    return (handler, bs)
+
+def takeN (s : Uni! m a) (n : Nat := s.buf) : m (Array (Chunk a) × (Uni? m a)) := sorry
+-- TODO: Unwrapp Array
+def take1 (s : Uni! m a) := takeN s 1
+def takeWhile (s : Uni! m a) (P : Chunk a → Bool) : m ((Uni? m a) × (Uni? m a)) := sorry
 
 def unUni (s : Uni! m a) : m (Chunk a) := sorry
 
