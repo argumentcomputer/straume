@@ -40,93 +40,7 @@ Any read can fail with a timeout.
 
 You can model a stream outside IO, say, for model checking and other testing approaches.
 Code using Streams is be compatible with system testing if and only if the it is equpped with a facility to hoist the outer monad.
-For more details on this approach, consult this exchange in haskell-cafe:
 
-> > On Mar 31, 2016 10:10 AM, "David Turner" < redacted >
-> wrote:
-> >>
-> >> Hi Jonn,
-> >>
-> >> I work on a similar-sounding system. We have arranged things so that
-> each node is a pure state machine, with outputs that are a pure function of
-> its inputs, with separate (and simple, obviously correct) machinery for
-> connecting these state machines over the network. This makes it rather
-> simple to run a bunch of these state machines in a test harness that
-> simulates all sorts of network nastiness (disconnections, dropped or
-> reordered messages, delays, corruption etc.) on a single thread.
-> >>
-> >> One trick that proved useful was to feed in the current time as an
-> explicit input message. This makes it possible to test things like timeouts
-> without having to actually wait for the time to pass, which speeds things
-> up immensely. We also make use of ContT somewhere in the tests to
-> interleave processing and assertions, and to define a 'hypothetically'
-> operator that lets a test run a sequence of actions and then backtrack.
-> >>
-> >> I think this idea was inspired by
-> https://github.com/NicolasT/paxos/blob/master/bin/synod.hs, at least the
-> network nastiness simulator thing. He uses threads for that demo but the
-> nodes' behaviour itself is pure:
-> https://github.com/NicolasT/paxos/blob/master/src/Network/Paxos/Synod/Proposer.hs
-> for example.
-> >>
-> >> We also have proved certain key properties of the network are implied
-> by certain local invariants, which reduces the testing problem down to one
-> of checking properties on each node separately. This was time consuming,
-> but highlighted certain important corner cases that it's unlikely we would
-> have found by random testing.
-> >>
-> >> If you're interested in Byzantine behaviour (the 'evil node' test) then
-> you may enjoy reading James Mickens' article on the subject:
-> https://www.usenix.org/publications/login-logout/may-2013/saddest-moment
-> >>
-> >> Hope that helps,
-> >>
-> >> David
-> >>
-> >> On 31 March 2016 at 00:41, Jonn Mostovoy < redacted > wrote:
-> >>>
-> >>> Dear friends,
-> >>>
-> >>> we have a distributed system written in Haskell, consisting of three
-> >>> types of nodes with dozen of instances of each of two types and a
-> >>> central node of the third type.
-> >>>
-> >>> Each node is started by executing a binary which sets up acid-state
-> >>> persistence layer and sockets over which msgpack messages are sent
-> >>> around.
-> >>>
-> >>> It is trivial to write low level functionality quickcheck test suites,
-> >>> which test properties of functions.
-> >>>
-> >>> We would like, however, to have a quickcheck-esque suite which sets up
-> >>> the network, then gets it to an arbitrary valid state (sending correct
-> >>> messages between nodes), then rigorously testing it for three
-> >>> high-level properties:
-> >>>
-> >>> 1. Chaos monkey test (disable random node, see if certain invariants
-> hold);
-> >>> 2. Evil node test (make several nodes work against the system, see if
-> >>> certain properties hold);
-> >>> 3. Rigorous testing of network-wide invariants, if all the nodes
-> >>> operate correctly.
-> >>>
-> >>> The problem we're facing is the following — if we want to inspect
-> >>> state of nodes in Haskell-land, we have to write a huge machinery
-> >>> which emulates every launch of node via thread. There will be bugs in
-> >>> this machinery, so we won't be able to get quality testing information
-> >>> before we fix those; if we want to run things as processes, then the
-> >>> best thing we can do is to inspect either acid-state dbs of each node
-> >>> (it poses resource locking problems and forces us to dump the state on
-> >>> every change, which is undesirable), or make an observer node, which
-> >>> dumps the consensus as Text and then parsing the data into Haskell
-> >>> terms, making decisions about the required properties based on that
-> >>> (so far, it feels like the best option).
-> >>>
-> >>> Am I missing something? How is something like this achieved in
-> >>> culture? How would you approach such a problem?
-> >>>
-> >>> Links to source files of test suites which do something similar are
-> >>> highly appreciated.
 -/
 
 /- False positives are used to represent probabilistic results.
@@ -214,6 +128,9 @@ instance ord2pord [BEq α] [Ord α] : PartialPOrdering α where
 
 -- TODO: Namespace Straume.Clock.Logical
 
+/-
+A logical clock is something that can tick. Two clocks can merge into one.
+-/
 class Clock (α : Type u) [BEq α] [PartialPOrdering α] where
   tick : α → α
   merge : α → α → α
@@ -243,35 +160,18 @@ instance instClockGodswatch : Clock Pos where
   tick p := Pos.mk $ 1 + p.x
   merge p q := Pos.mk $ p.x + q.x
 
-
+/-
+Four types m, σ, T, δ form a system of physical time if:
+ * a timestamp T can be produced from state σ into monad m,
+ * a distance δ can be calculated between two timestamps T,
+ * a distance δ between some starting timestamp T and current time, returned in monad m.
+-/
 class Time (m : Type u → Type v) (σ : Type k) (T : Type u) (δ : Type u) [Inhabited σ] [Monad m] where
   τ : σ → m T
   Δτ : T → T → δ
   Δn (x₀ : T) : m δ :=
     τ default >>=
       fun x₁ => pure $ Δτ x₀ x₁
-
--- structure TimeS (m : Type u → Type v)
---                 (σ : Type k)
---                 (T : Type u)
---                 (δ : Type u)
---                 [Inhabited σ]
---                 [Monad m]
---                 [it : Time m σ T δ] where
---   τ : σ → m T := it.τ
---   Δτ : T → T → δ := it.Δτ
---   Δn (x₀ : T) : m δ :=
---     τ default >>=
---       fun x₁ => pure $ Δτ x₀ x₁
-
--- structure ThreeTypesInAStructSayNothingOfAMonad (s : Type) (t : Type → Type t) (a : Type) (b : Type) where
---   f : s → t a
---   g : a → a → b
---   ψ : a → t b
---   typeof_s := s
---   typeof_t := t
---   typeof_a := a
---   typeof_b := b
 
 structure MSec where
   qty : Nat
@@ -334,33 +234,8 @@ I hope it's clear. 🙇
 structure Chunk (α : Type u) where
   data : α × Option Terminator
 
--- class Stream (a : Type uₐ) (mₐ : Type uₐ → Type vₐ)
---              (σₜ : Type uₜ) (mₜ : Type uₜ → Type vₜ) [Inhabited σₜ] [Monad mₜ] [Time mₜ σₜ T δₜ]
---              (αₖ : Type uₖ) [BEq αₖ] [PartialPOrdering αₖ] [Clock αₖ]
---              (buf : Nat := 2048)
---              (αₖ2 := Wristwatch) [BEq αₖ2] [PartialPOrdering αₖ2] [Clock αₖ2]
---              (αₖ3 := Wristwatch) [BEq αₖ3] [PartialPOrdering αₖ3] [Clock αₖ3]
---              where
---   /- "Give me a stream and a natural, and I'll produce two streams: a finite one with the desired amount of chunks, and the rest. " -/
---   splitAt (stream : mₐ a) (n : Nat := buf) : mₐ a × mₐ a
---   buffer := splitAt
-
-universe u
-universe v
-
 /-
 Simplest *practical* stream! It has strictly one source, hecnce the name.
-
-✅ We are aware of the risks of using named instances.
-
-But the alternative would be this:
-
-```
-  τ {mₜ : Type uₜ → Type uᵥ} : σ → mₜ T
-  Δτ : T → T → δ
-```
-
-But then, how would lean understand that T is T? 🙅
 
 This structure is really stupid. It doesn't know it's a stream. All the stuff happens in the functions like `splitAt`.
 Note that they are generic in the wrapper-monad and in a particular time implementation.
@@ -391,7 +266,7 @@ def unUni (s : Uni! m a) : m (Chunk a) := sorry
 #check FS.Stream
 
 /-
-Some cool functions for a cooler day. It's too hot today.
+TODO
 -/
 -- def splitAt (s : Uni! m a) (n : Nat := s.buf) : m ((Uni! m a) × (Uni? m a)) := sorry
 -- def span (s : Uni! m a) (P : Chunk a → Bool) : m ((Uni? m a) × (Uni? m a)) := sorry
