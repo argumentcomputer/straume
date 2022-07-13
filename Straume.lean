@@ -251,6 +251,8 @@ structure Uni (m : Type u → Type v) (a : Type u) where
 abbrev Uni! m a := Uni m (Chunk a)
 abbrev Uni? m a := Uni m $ Option (Chunk a)
 
+#check System.FilePath
+
 class MonadEmit (m : Type u → Type v) (source : Type u) (value : Type u) where
   askFrom : m source → Nat → m (source × value)
 

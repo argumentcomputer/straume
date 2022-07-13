@@ -1,6 +1,10 @@
 import Lake
 open Lake DSL
 
-package Straume {
-  defaultFacet := PackageFacet.oleans -- no executable! Pure cargo cult!
+package Straume
+
+@[defaultTarget]
+lean_exe straume {
+  supportInterpreter := true
+  root := "Main"
 }
