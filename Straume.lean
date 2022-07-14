@@ -230,9 +230,13 @@ Chunks are
  1, .some eos
 
 I hope it's clear. 🙇
+
+TODO: rewrite this comment because now the type is an inductive!
 -/
-structure Chunk (α : Type u) where
-  data : α × Option Terminator
+inductive Chunk (α : Type u) where
+| nil
+| cont : α → Chunk α
+| fin : α × Option Terminator → Chunk α
 
 /-
 Simplest *practical* stream! It has strictly one source, hecnce the name.
@@ -240,34 +244,45 @@ Simplest *practical* stream! It has strictly one source, hecnce the name.
 This structure is really stupid. It doesn't know it's a stream. All the stuff happens in the functions like `splitAt`.
 Note that they are generic in the wrapper-monad and in a particular time implementation.
 So you can test everything under simulation outside IO.
+
+The four-letter mnemonic for Uni is "MSRT": https://en.wikipedia.org/wiki/Deployable_Operations_Group#Maritime_Security_Response_Team_(MSRT): Monad-Source-Raw-Target.
 -/
-structure Uni (m : Type u → Type v) (a : Type u) where
-  timestamp : (mₜ : Type p → Type q) → σ → mₜ T
+structure Uni (m : Type u → Type v) (h : Type u) (raw : Type u) (target : Type u) where
+  ----------------------------------
+  consume : m h → Nat → m (raw × h)
+  bundle : raw → target
+  ----------------------------------
+  current : target
+  source : h
+  ----------------------------------
+  timestamp (mₜ : Type p → Type q) (σ T : Type p) : σ → mₜ T
   pos : Pos
-  buf : Nat := 2048
+  buf : Nat := 64
 
 #check Uni.mk
 
-abbrev Uni! m a := Uni m (Chunk a)
-abbrev Uni? m a := Uni m $ Option (Chunk a)
+abbrev UniC m s r t := Uni m s r (Chunk t)
 
-#check System.FilePath
+#check System.FilePath.mk
 
-class MonadEmit (m : Type u → Type v) (source : Type u) (value : Type u) where
-  askFrom : m source → Nat → m (source × value)
+class MonadEmit (m : Type u → Type v) (source : Type u) (rawValue : Type u) where
+  askFrom : m source → Nat → m (rawValue × source)
 
 instance : MonadEmit IO IO.FS.Handle ByteArray where
   askFrom (src : IO IO.FS.Handle) (n : Nat) := do
     let handler <- src
     let bs <- IO.FS.Handle.read handler (USize.ofNat n)
-    return (handler, bs)
+    return (bs, handler)
 
-def takeN (s : Uni! m a) (n : Nat := s.buf) : m (Array (Chunk a) × (Uni? m a)) := sorry
+def takeN (stream : UniC m s r t) (n : Nat) [Monad m] [MonadEmit m s r] : m (Array (Chunk a) × (UniC m s r t)) := do
+    -- [:n].forIn Array.empty (fun _ acc => do
+    --   sorry
+    -- )
+    return (Array.empty, stream)
+  -- let (value, src₁) ←
 -- TODO: Unwrapp Array
-def take1 (s : Uni! m a) := takeN s 1
-def takeWhile (s : Uni! m a) (P : Chunk a → Bool) : m ((Uni? m a) × (Uni? m a)) := sorry
-
-def unUni (s : Uni! m a) : m (Chunk a) := sorry
+def take1 (stream : UniC m s r t) [Monad m] [MonadEmit m s r] : m (Array (Chunk a) × (UniC m s r t)) := takeN stream 1
+def takeWhile (stream : UniC m s r t) [Monad m] [MonadEmit m s r] (P : Chunk a → Bool) : m ((UniC m s r t) × (UniC m s r t)) := sorry
 
 #check IO.getStdin
 #check FS.Stream

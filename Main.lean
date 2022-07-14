@@ -5,7 +5,7 @@ def askFrom : IO IO.FS.Handle → Nat → IO (IO.FS.Handle × ByteArray) :=
 
 def main : IO Unit := do
   IO.println "STARTING STREAM DEMO 2"
-  let (_, zoink) <-
+  let (zoink, _) <-
     IO.FS.withFile (System.mkFilePath [".", "Straume.lean"])
                    (.read)
                    (fun handle => askFrom (pure handle) 228)
