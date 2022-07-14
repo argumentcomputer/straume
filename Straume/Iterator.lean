@@ -1,16 +1,24 @@
 namespace Iterator
 
+instance : DecidableEq ByteArray
+  | a, b => match decEq a.data b.data with
+    | isTrue h₁  => isTrue $ congrArg ByteArray.mk h₁
+    | isFalse h₂ => isFalse $ fun h => by cases h; exact (h₂ rfl)
+
 
 class HasTokens (α : Type _) (β : Type _) where
   tokens : α → List β
   push : α → β -> α
 
+export HasTokens (tokens push)
+
 instance : HasTokens String Char where
   tokens := String.data
   push := String.push
 
-export HasTokens (tokens push)
-
+instance : HasTokens ByteArray UInt8 where
+  tokens := ByteArray.toList
+  push := ByteArray.push
 
 
 structure Iterator (α : Type) where
@@ -40,6 +48,14 @@ instance : Iterable String where
       if s₁ ≠ s₂ || b > e then ""
       else s₁.extract ⟨b⟩ ⟨e⟩
 
+instance : Iterable ByteArray where
+  length s := s.size
+  hasNext | ⟨s, i⟩ => i < s.size
+  next | ⟨s, i⟩ => ⟨s, i+1⟩
+  extract
+    | ⟨s₁, b⟩, ⟨s₂, e⟩ =>
+      if s₁ ≠ s₂ || b > e then default
+      else s₁.extract b e
 
 
 def curr (β : Type _) [HasTokens α β] [Inhabited β] (it: Iterator α) [Iterable α] : β :=
