@@ -236,7 +236,7 @@ TODO: rewrite this comment because now the type is an inductive!
 inductive Chunk (α : Type u) where
 | nil
 | cont : α → Chunk α
-| fin : α × Option Terminator → Chunk α
+| fin : α × Terminator → Chunk α
 
 /-
 Simplest *practical* stream! It has strictly one source, hecnce the name.
@@ -274,15 +274,15 @@ instance : MonadEmit IO IO.FS.Handle ByteArray where
     let bs <- IO.FS.Handle.read handler (USize.ofNat n)
     return (bs, handler)
 
-def takeN (stream : UniC m s r t) (n : Nat) [Monad m] [MonadEmit m s r] : m (Array (Chunk a) × (UniC m s r t)) := do
+def takeN (stream : UniC m s r t) (n : Nat) [Monad m] [MonadEmit m s r] : m (Array (Chunk t) × (UniC m s r t)) := do
     -- [:n].forIn Array.empty (fun _ acc => do
     --   sorry
     -- )
     return (Array.empty, stream)
   -- let (value, src₁) ←
 -- TODO: Unwrapp Array
-def take1 (stream : UniC m s r t) [Monad m] [MonadEmit m s r] : m (Array (Chunk a) × (UniC m s r t)) := takeN stream 1
-def takeWhile (stream : UniC m s r t) [Monad m] [MonadEmit m s r] (P : Chunk a → Bool) : m ((UniC m s r t) × (UniC m s r t)) := sorry
+-- def take1 (stream : UniC m s r t) [Monad m] [MonadEmit m s r] : m (Array (Chunk t) × (UniC m s r t)) := takeN stream 1
+-- def takeWhile (stream : UniC m s r t) [Monad m] [MonadEmit m s r] (P : Chunk a → Bool) : m ((UniC m s r t) × (UniC m s r t)) := sorry
 
 #check IO.getStdin
 #check FS.Stream
