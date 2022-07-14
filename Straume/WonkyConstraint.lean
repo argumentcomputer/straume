@@ -1,11 +1,3 @@
-class Time (m : Type u → Type v) (σ : Type k) (α δ : Type u) where
-  stamp : σ → m α
-  delta : α → α → δ
-
-instance : Time BaseIO Unit Nat Int where
-  stamp _ := IO.monoMsNow
-  delta x y := y - x
-
 structure RichStreamIterator (m : Type u → Type v) (h raw target : Type u) where
   consume : m h → Nat → m (raw × h)
   bundle : raw → target
