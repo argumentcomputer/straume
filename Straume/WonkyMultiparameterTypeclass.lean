@@ -14,4 +14,4 @@ structure Wall where
   d : Type u
   sDef : s
   clock : Time m s a d
-  now : m a :=
+  now : m a := clock.stamp sDef
