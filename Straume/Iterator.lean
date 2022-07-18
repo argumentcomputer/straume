@@ -1,3 +1,6 @@
+import Straume.Bit
+open Bit
+
 namespace Iterator
 
 instance : DecidableEq ByteArray
@@ -20,6 +23,9 @@ instance : HasTokens ByteArray UInt8 where
   tokens := ByteArray.toList
   push := ByteArray.push
 
+instance : HasTokens ByteArray Bit where
+  tokens ba := List.join $ List.map uint8ToBits $ ByteArray.toList ba
+  push := sorry -- unclear semantics: make into a whole UInt8?
 
 structure Iterator (α : Type) where
   s : α
