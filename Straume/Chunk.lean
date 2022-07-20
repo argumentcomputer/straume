@@ -26,7 +26,7 @@ is encoded as a three bit integer.
 
 Naturally, chunks are:
  .cont [1,0,0,1,1,1,1],
- .fin [0,0,1], .eos
+ .fin ( [0,0,1], .eos )
 
 and are of type `Chunk Bit (List Bit)`.
 
@@ -39,7 +39,7 @@ Chunks are
  .cont 1
  .cont 0
  ...
- .fin 1, eos
+ .fin ( 1, .eos )
 
 I hope it's clear. 🙇
 -/
