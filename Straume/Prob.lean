@@ -40,14 +40,6 @@ def assure (x : FalsePositive) (y : FalsePositive) : FalsePositive :=
 
 def doubt := Straume.Combinators.anti assure
 
-inductive Comparison α where
-| incomparable
-| eq -- We use eq from BEq, so it's always certain
-| lt : α → Comparison α
-| gt : α → Comparison α
-
--- abbrev Incomparable := Unit
-
 end FalsePositive
 
 ---------------------------------------------
@@ -70,14 +62,6 @@ def disprove (x : FalseNegative) (y : FalseNegative) : FalseNegative :=
 
 /- Kind of like or, keeping the false positive with the highest confidence. -/
 def convince := Straume.Combinators.anti disprove
-
-inductive Comparison α where
-| incomparable : α → Comparison α
-| eq -- We use eq from BEq, so it's always certain
-| lt
-| gt
-
--- structure Relation := Bool
 
 end FalseNegative
 
