@@ -5,8 +5,7 @@ open Iterator
 
 To make Zeptoparsec work on another type γ, define all the necessary
 scaffolding in Iterator.lean, currently:
-- instance Iterable γ
-- instance HasTokens γ μ, where μ is the type of the underlying elements of γ
+- instance Iterable γ μ, where μ is the type that γ semantically consists of
 
 -/
 
@@ -14,7 +13,7 @@ scaffolding in Iterator.lean, currently:
 
 namespace Zeptoparsec
 
-variable (σ : Type) [Iterable σ] [Inhabited σ] [DecidableEq σ] [DecidableEq ε] [HasTokens σ ε] [Inhabited ε]
+variable (σ : Type) [Iterable σ ε] [Inhabited σ] [DecidableEq σ] [DecidableEq ε] [Inhabited ε]
 
 namespace Parsec
 inductive ParseResult (α: Type) where
@@ -115,7 +114,7 @@ def unexpectedEndOfInput := "unexpected end of input"
 @[inline]
 def anyChar : Parsec σ ε := λ it =>
   if hasNext it
-  then success (next it) $ curr ε it
+  then success (next it) $ curr it
   else error it unexpectedEndOfInput
 
 @[inline]
@@ -140,7 +139,7 @@ def notFollowedBy (p : Parsec σ α) : Parsec σ Unit := λ it =>
 @[inline]
 def peek? : Parsec σ (Option ε) := fun it =>
   if hasNext it then
-    success it $ curr ε it
+    success it $ curr it
   else
     success it none
 
@@ -174,7 +173,7 @@ def asciiLetter : Parsec String Char := attempt String do
 
 partial def skipWs (it : Iterator String) : Iterator String :=
   if hasNext it then
-    let c := curr Char it
+    let c := curr it
     if c = '\u0009' ∨ c = '\u000a' ∨ c = '\u000d' ∨ c = '\u0020' then
       skipWs $ next it
     else

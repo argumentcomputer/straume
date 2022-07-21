@@ -8,24 +8,8 @@ instance : DecidableEq ByteArray
     | isTrue h₁  => isTrue $ congrArg ByteArray.mk h₁
     | isFalse h₂ => isFalse $ fun h => by cases h; exact (h₂ rfl)
 
-
-class HasTokens (α : Type _) (β : Type _) where
-  tokens : α → List β
-  push : α → β -> α
-
-export HasTokens (tokens push)
-
-instance : HasTokens String Char where
-  tokens := String.data
-  push := String.push
-
-instance : HasTokens ByteArray UInt8 where
-  tokens := ByteArray.toList
-  push := ByteArray.push
-
-instance : HasTokens ByteArray Bit where
-  tokens ba := List.join $ List.map uint8ToBits $ ByteArray.toList ba
-  push := sorry -- unclear semantics: make into a whole UInt8?
+instance : Repr ByteArray where
+  reprPrec ba _ := toString ba
 
 structure Iterator (α : Type) where
   s : α
@@ -35,26 +19,30 @@ structure Iterator (α : Type) where
 def iter (s : α) : Iterator α :=
   ⟨s, 0⟩
 
-
-class Iterable (α : Type) where
+class Iterable (α : Type) (β : outParam Type) where
+  push : α → β -> α
   length : α -> Nat
   hasNext : Iterator α -> Bool
   next : Iterator α -> Iterator α
   extract : Iterator α → Iterator α → α
+  curr : Iterator α -> β
 
-export Iterable (length hasNext next extract)
+export Iterable (push length hasNext next extract curr)
 
 
-instance : Iterable String where
+instance : Iterable String Char where
+  push := String.push
   length s := s.length 
   hasNext | ⟨s, i⟩ => i < s.endPos.byteIdx
   next | ⟨s, i⟩ => ⟨s, (s.next ⟨i⟩).byteIdx⟩
   extract
     | ⟨s₁, b⟩, ⟨s₂, e⟩ =>
-      if s₁ ≠ s₂ || b > e then ""
+      if s₁ ≠ s₂ || b > e then default
       else s₁.extract ⟨b⟩ ⟨e⟩
+  curr | ⟨s, i⟩ => s.get ⟨i⟩
 
-instance : Iterable ByteArray where
+instance : Iterable ByteArray UInt8 where
+  push := ByteArray.push
   length s := s.size
   hasNext | ⟨s, i⟩ => i < s.size
   next | ⟨s, i⟩ => ⟨s, i+1⟩
@@ -62,14 +50,24 @@ instance : Iterable ByteArray where
     | ⟨s₁, b⟩, ⟨s₂, e⟩ =>
       if s₁ ≠ s₂ || b > e then default
       else s₁.extract b e
+  curr | ⟨s, i⟩ => let ts := ByteArray.toList s
+    match ts.get? i with
+      | some curr! => curr!
+      | none       => default -- unreachable: pos shouldn't increase if ¬s.hasNext
 
+instance : Iterable (List Bit) Bit where
+  push := List.concat
+  length s := s.length
+  hasNext | ⟨s, i⟩ => i < s.length
+  next | ⟨s, i⟩ => ⟨s, i+1⟩
+  extract
+    | ⟨s₁, b⟩, ⟨s₂, e⟩ =>
+      if s₁ ≠ s₂ then default
+      else List.extract s₁ b e
+  curr | ⟨s, i⟩ => match s.get? i with
+      | some curr! => curr!
+      | none       => default -- unreachable: pos shouldn't increase if ¬s.hasNext
 
-def curr (β : Type _) [HasTokens α β] [Inhabited β] (it: Iterator α) [Iterable α] : β :=
-  let ts := tokens it.s
-  match ts.get? it.i with
-    | some curr! => curr!
-    | none       => default -- unreachable: pos shouldn't increase if ¬s.hasNext
-
-def forward [Iterable α] : Iterator α → Nat → Iterator α
+def forward [Iterable α β] : Iterator α → Nat → Iterator α
   | it, 0   => it
   | it, n+1 => forward (next it) n
