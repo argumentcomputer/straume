@@ -9,19 +9,17 @@ scaffolding in Iterator.lean, currently:
 
 -/
 
-/- TODO: somehow make most of σ's implicit -/
-
 namespace Zeptoparsec
 
-variable (σ : Type) [Iterable σ ε] [Inhabited σ] [DecidableEq σ] [DecidableEq ε] [Inhabited ε]
+variable {σ : Type} [Iterable σ ε] [Inhabited σ] [DecidableEq σ] [DecidableEq ε] [Inhabited ε]
 
 namespace Parsec
-inductive ParseResult (α: Type) where
+inductive ParseResult (σ α: Type) where
   | success (pos : Iterator σ) (res : α)
   | error (pos : Iterator σ) (err : String)
   deriving Repr
 
-def Parsec (α : Type) : Type := Iterator σ → ParseResult σ α
+def Parsec (σ α : Type) : Type := Iterator σ → ParseResult σ α
 
 end Parsec
 
@@ -42,7 +40,7 @@ def bind {α β : Type} (f : Parsec σ α) (g : α → Parsec σ β) : Parsec σ
   | error pos msg => error pos msg
 
 instance : Monad (Parsec σ) :=
-  { pure := Parsec.pure σ, bind := bind σ }
+  { pure := Parsec.pure, bind := bind }
 
 @[inline]
 def fail (msg : String) : Parsec σ α := fun it =>
@@ -62,13 +60,13 @@ def attempt (p : Parsec σ α) : Parsec σ α := λ it =>
   | error _ err => error it err
 
 instance : Alternative (Parsec σ) :=
-{ failure := fail σ "", orElse := orElse σ }
+{ failure := fail "", orElse := orElse }
 
 def expectedEndOfInput := "expected end of input"
 
 @[inline]
 def eof : Parsec σ Unit := fun it =>
-  if Iterable.hasNext it then
+  if hasNext it then
     error it expectedEndOfInput
   else
     success it ()
@@ -79,10 +77,10 @@ partial def manyCore (p : Parsec σ α) (acc : Array α) : Parsec σ $ Array α 
   <|> pure acc
 
 @[inline]
-def many (p : Parsec σ α) : Parsec σ $ Array α := manyCore σ p #[]
+def many (p : Parsec σ α) : Parsec σ $ Array α := manyCore p #[]
 
 @[inline]
-def many1 (p : Parsec σ α) : Parsec σ $ Array α := do manyCore σ p #[←p]
+def many1 (p : Parsec σ α) : Parsec σ $ Array α := do manyCore p #[←p]
 
 @[inline]
 partial def manyCharsCore (p : Parsec σ ε) (acc : σ) : Parsec σ σ :=
@@ -91,12 +89,12 @@ partial def manyCharsCore (p : Parsec σ ε) (acc : σ) : Parsec σ σ :=
 
 -- Parses zero or more occurrences
 @[inline]
-def manyChars (p : Parsec σ ε) : Parsec σ σ := manyCharsCore σ p default
+def manyChars (p : Parsec σ ε) : Parsec σ σ := manyCharsCore p default
 
 -- Parses one or more occurrences
 @[inline]
 def many1Chars (p : Parsec σ ε) : Parsec σ σ := do
-  manyCharsCore σ p $ push default (←p)
+  manyCharsCore p $ push default (←p)
 
 def pstring (s : σ) : Parsec σ σ := λ it =>
   let substr := extract it (forward it $ length s)
@@ -107,7 +105,7 @@ def pstring (s : σ) : Parsec σ σ := λ it =>
     error it s!"expected something else"
 
 @[inline]
-def skipString (s : σ) : Parsec σ Unit := pstring σ s *> pure ()
+def skipString (s : σ) : Parsec σ Unit := pstring s *> pure ()
 
 def unexpectedEndOfInput := "unexpected end of input"
 
@@ -118,17 +116,17 @@ def anyChar : Parsec σ ε := λ it =>
   else error it unexpectedEndOfInput
 
 @[inline]
-def pchar (c : ε) : Parsec σ ε := attempt σ do
-  -- if (←anyChar σ) = c then pure c else fail σ s!"expected: '{c}'" -- TODO
-  if (←anyChar σ) = c then pure c else fail σ s!"expected some other char"
+def pchar (c : ε) : Parsec σ ε := attempt do
+  -- if (←anyChar) = c then pure c else fail s!"expected: '{c}'" -- TODO
+  if (←anyChar) = c then pure c else fail s!"expected some other char"
 
 @[inline]
-def skipChar (c : ε) : Parsec σ Unit := pchar σ c *> pure ()
+def skipChar (c : ε) : Parsec σ Unit := pchar c *> pure ()
 
 @[inline]
-def satisfy (p : ε → Bool) : Parsec σ ε := attempt σ do
-  let c ← anyChar σ
-  if p c then return c else fail σ "condition not satisfied"
+def satisfy (p : ε → Bool) : Parsec σ ε := attempt do
+  let c ← anyChar
+  if p c then return c else fail "condition not satisfied"
 
 @[inline]
 def notFollowedBy (p : Parsec σ α) : Parsec σ Unit := λ it =>
@@ -145,9 +143,10 @@ def peek? : Parsec σ (Option ε) := fun it =>
 
 @[inline]
 def peek! : Parsec σ ε := do
-  let some c ← peek? σ | fail σ unexpectedEndOfInput
+  let some c ← peek? | fail unexpectedEndOfInput
   return c
 
+-- TODO: can increase it.i beyond (length it)
 @[inline]
 def skip : Parsec σ Unit := fun it =>
   success (next it) ()
@@ -155,21 +154,21 @@ def skip : Parsec σ Unit := fun it =>
 -- String-specific
 
 @[inline]
-def digit : Parsec String Char := attempt String do
-  let c ← anyChar String
-  if '0' ≤ c ∧ c ≤ '9' then return c else fail String s!"digit expected"
+def digit : Parsec String Char := attempt do
+  let c ← anyChar
+  if '0' ≤ c ∧ c ≤ '9' then return c else fail s!"digit expected"
 
 @[inline]
-def hexDigit : Parsec String Char := attempt String do
-  let c ← anyChar String
+def hexDigit : Parsec String Char := attempt do
+  let c ← anyChar
   if ('0' ≤ c ∧ c ≤ '9')
    ∨ ('a' ≤ c ∧ c ≤ 'a')
-   ∨ ('A' ≤ c ∧ c ≤ 'A') then return c else fail String s!"hex digit expected"
+   ∨ ('A' ≤ c ∧ c ≤ 'A') then return c else fail s!"hex digit expected"
 
 @[inline]
-def asciiLetter : Parsec String Char := attempt String do
-  let c ← anyChar String
-  if ('A' ≤ c ∧ c ≤ 'Z') ∨ ('a' ≤ c ∧ c ≤ 'z') then return c else fail String s!"ASCII letter expected"
+def asciiLetter : Parsec String Char := attempt do
+  let c ← anyChar
+  if ('A' ≤ c ∧ c ≤ 'Z') ∨ ('a' ≤ c ∧ c ≤ 'z') then return c else fail s!"ASCII letter expected"
 
 partial def skipWs (it : Iterator String) : Iterator String :=
   if hasNext it then

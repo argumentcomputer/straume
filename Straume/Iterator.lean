@@ -3,6 +3,16 @@ open Bit
 
 namespace Iterator
 
+/-
+  We implement a `Repr` instance for `ByteArray` instead of a `ToString`
+  instance for `Iterator α`. At this point, this is a deliberate choice:
+  it's possible we might want to write ToString instances to only show
+  the "remaining" part of the iterator, i.e. a slice of s from i to the end.
+
+  `Repr ByteArray`, however, we need for debug.
+  TODO?
+-/
+
 instance : DecidableEq ByteArray
   | a, b => match decEq a.data b.data with
     | isTrue h₁  => isTrue $ congrArg ByteArray.mk h₁

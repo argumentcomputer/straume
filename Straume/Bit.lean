@@ -14,6 +14,12 @@ instance : Repr Bit where
     | zero, _ => "0"
     | one,  _ => "1"
 
+instance : ToString Bit where
+  toString
+    | zero => "0"
+    | one => "1"
+
+
 theorem Nat.div2_lt (h : n ≠ 0) : n / 2 < n := by
   match n with
   | 1   => decide
