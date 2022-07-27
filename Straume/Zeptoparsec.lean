@@ -3,9 +3,14 @@ open Iterator
 
 /-
 
+This is a library defining a simplistic parser, modeled after Parsec.lean.
+Three type pairs are provided: String↔Char, ByteArray↔UInt8, and List Bit↔Bit.
+
 To make Zeptoparsec work on another type γ, define all the necessary
 scaffolding in Iterator.lean, currently:
 - instance Iterable γ μ, where μ is the type that γ semantically consists of
+- if not present, instances DecidableEq γ and DecidableEq μ
+- if not present, instances Inhabited γ and Inhabited μ
 
 -/
 
@@ -13,18 +18,19 @@ namespace Zeptoparsec
 
 variable {σ : Type} [Iterable σ ε] [Inhabited σ] [DecidableEq σ] [DecidableEq ε] [Inhabited ε]
 
-namespace Parsec
 inductive ParseResult (σ α: Type) where
-  | success (pos : Iterator σ) (res : α)
-  | error (pos : Iterator σ) (err : String)
-  deriving Repr
+  | success (it : Iterator σ) (res : α)
+  | error (it : Iterator σ) (err : String)
+  deriving Repr, DecidableEq
 
 def Parsec (σ α : Type) : Type := Iterator σ → ParseResult σ α
 
-end Parsec
-
-namespace Parsec
 open ParseResult
+
+@[inline]
+def deparse : ParseResult σ α → Iterator σ
+  | success it _ => it
+  | error   it _ => it
 
 instance (α : Type) : Inhabited (Parsec σ α) :=
   ⟨λ it => error it ""⟩
@@ -40,7 +46,7 @@ def bind {α β : Type} (f : Parsec σ α) (g : α → Parsec σ β) : Parsec σ
   | error pos msg => error pos msg
 
 instance : Monad (Parsec σ) :=
-  { pure := Parsec.pure, bind := bind }
+  { pure := Zeptoparsec.pure, bind }
 
 @[inline]
 def fail (msg : String) : Parsec σ α := fun it =>
@@ -83,6 +89,16 @@ def many (p : Parsec σ α) : Parsec σ $ Array α := manyCore p #[]
 def many1 (p : Parsec σ α) : Parsec σ $ Array α := do manyCore p #[←p]
 
 @[inline]
+partial def someCore : Parsec σ α → Nat → Array α → Parsec σ (Array α)
+  | _,   0, acc => pure acc
+  | p, n+1, acc =>
+    (do someCore p n (acc.push $ ←p))
+    <|> pure acc
+
+@[inline]
+def some (p : Parsec σ α) (n : Nat) : Parsec σ $ Array α := someCore p n #[]
+
+@[inline]
 partial def manyCharsCore (p : Parsec σ ε) (acc : σ) : Parsec σ σ :=
   (do manyCharsCore p (push acc $ ←p))
   <|> pure acc
@@ -95,6 +111,21 @@ def manyChars (p : Parsec σ ε) : Parsec σ σ := manyCharsCore p default
 @[inline]
 def many1Chars (p : Parsec σ ε) : Parsec σ σ := do
   manyCharsCore p $ push default (←p)
+
+@[inline]
+partial def someCharsCore : Parsec σ ε → Nat → σ → Parsec σ σ
+  | _,   0, acc => pure acc
+  | p, n+1, acc =>
+    (do someCharsCore p n (push acc $ ←p))
+    <|> pure acc
+
+-- Parses one or more, up to `n`, occurrences, unless n is zero.
+-- We deliberately do not allow to parse 0 characters otherwise, as that
+-- will prevent composition with e.g. `many`.
+@[inline]
+def someChars (p : Parsec σ ε) (n : Nat) : Parsec σ σ := do
+  if n = 0 then pure default else
+  someCharsCore p (n-1) $ push default (←p)
 
 def pstring (s : σ) : Parsec σ σ := λ it =>
   let substr := extract it (forward it $ length s)
@@ -143,13 +174,15 @@ def peek? : Parsec σ (Option ε) := fun it =>
 
 @[inline]
 def peek! : Parsec σ ε := do
-  let some c ← peek? | fail unexpectedEndOfInput
+  let .some c ← peek? | fail unexpectedEndOfInput
   return c
 
--- TODO: can increase it.i beyond (length it)
 @[inline]
 def skip : Parsec σ Unit := fun it =>
-  success (next it) ()
+  if hasNext it then
+    success (next it) ()
+  else
+    error it unexpectedEndOfInput
 
 -- String-specific
 
@@ -183,4 +216,3 @@ partial def skipWs (it : Iterator String) : Iterator String :=
 @[inline]
 def ws : Parsec String Unit := fun it =>
   success (skipWs it) ()
-end Parsec
