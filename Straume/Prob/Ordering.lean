@@ -3,6 +3,12 @@ import Straume.Prob
 /-
 Exports Straume.Prob.Ordering.Comparable.FalsePositive.Partial typeclass.
 Useful for bloom filters and clocks.
+
+The other three entities:
+ - Comparable, FalseNegative;
+ - Incomparable, FalsePositive;
+ - Incomparable, FalseNegative
+aren't going to be useful for us any time soon, but we've still included those here in case someone is a completionist.
 -/
 namespace Straume.Prob.Ordering
 
