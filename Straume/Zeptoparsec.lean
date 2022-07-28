@@ -12,6 +12,9 @@ scaffolding in Iterator.lean, currently:
 - if not present, instances DecidableEq γ and DecidableEq μ
 - if not present, instances Inhabited γ and Inhabited μ
 
+To use Zeptoparsec, compose all the combinators before applying them
+to the source iterator.
+
 -/
 
 namespace Zeptoparsec
@@ -27,6 +30,10 @@ def Parsec (σ α : Type) : Type := Iterator σ → ParseResult σ α
 
 open ParseResult
 
+-- Usually, we compose parsers before applying the composition to the
+-- iterator/source. However, we might want to parse out an intermediate
+-- result and then continue parsing the resulting iterator. `deparse` is
+-- provided for convenience.
 @[inline]
 def deparse : ParseResult σ α → Iterator σ
   | success it _ => it
@@ -67,6 +74,10 @@ def attempt (p : Parsec σ α) : Parsec σ α := λ it =>
 
 instance : Alternative (Parsec σ) :=
 { failure := fail "", orElse := orElse }
+
+---------------------------------
+--     Semantic combinators
+---------------------------------
 
 def expectedEndOfInput := "expected end of input"
 
@@ -184,7 +195,9 @@ def skip : Parsec σ Unit := fun it =>
   else
     error it unexpectedEndOfInput
 
--- String-specific
+---------------------------------
+--       String-specific
+---------------------------------
 
 @[inline]
 def digit : Parsec String Char := attempt do
