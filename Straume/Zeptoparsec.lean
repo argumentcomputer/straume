@@ -1,5 +1,5 @@
 import Straume.Iterator
-open Iterator
+open Straume.Iterator
 
 /-
 

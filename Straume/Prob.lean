@@ -11,9 +11,11 @@ Perhaps, it makes sense, for probabilistic computations, to equip those with a p
 Write class ToRational or find Rational.ofFloat?..
 -/
 inductive FalsePositive where
-| perhaps : Float → FalsePositive
 | no
-  deriving Repr, BEq
+| perhaps : Float → FalsePositive
+  deriving Repr, BEq, Inhabited
+
+-- #eval (default : FalsePositive)
 
 instance : HMul FalsePositive FalsePositive FalsePositive where
   hMul x y := match (x, y) with
@@ -24,7 +26,9 @@ instance : HMul FalsePositive FalsePositive FalsePositive where
 inductive FalseNegative where
 | yes
 | hardly : Float → FalseNegative
-  deriving Repr, BEq
+  deriving Repr, BEq, Inhabited
+
+-- #eval (default : FalseNegative)
 
 ---------------------------------------------
 

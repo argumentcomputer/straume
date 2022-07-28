@@ -58,6 +58,6 @@ instance [BEq α] [Ord α] [BEq (List α)] [FP.Partial (List α)]
       | .incomparable =>
         let zipped :=
           List.zipWith rgt xs ys
-        (zipped, p₁ * p₂)
+        if zipped == [] then (panic "") else (zipped, p₁ * p₂)
 
 end Straume.Clock

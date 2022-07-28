@@ -2,17 +2,16 @@ import LSpec
 import Straume.Iterator
 import Straume.Zeptoparsec
 import Straume.Bit
+import Straume.Combinators
 
-open Iterator
+open Straume.Combinators
+open Straume.Iterator
 open Zeptoparsec
 open ParseResult
 
 def isSuccess : ParseResult α β → Bool
   | success _ _ => true
   | error _ _ => false
-
-def const : α → β → α
-  | a, _ => a
 
 -- String parser tests
 

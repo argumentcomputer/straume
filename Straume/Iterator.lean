@@ -1,7 +1,9 @@
 import Straume.Bit
 open Bit
 
-namespace Iterator
+namespace Straume.Iterator
+universe u
+universe v
 
 /-
   We implement a `Repr` instance for `ByteArray` instead of a `ToString`
@@ -21,7 +23,8 @@ instance : DecidableEq ByteArray
 instance : Repr ByteArray where
   reprPrec ba _ := toString ba
 
-structure Iterator (α : Type) where
+-- TODO: Consider Type u
+structure Iterator (α : Type u) where
   s : α
   i : Nat
   deriving DecidableEq, Repr
@@ -29,7 +32,7 @@ structure Iterator (α : Type) where
 def iter (s : α) : Iterator α :=
   ⟨s, 0⟩
 
-class Iterable (α : Type) (β : outParam Type) where
+class Iterable (α : Type u) (β : outParam (Type v)) where
   push : α → β → α
   length : α → Nat
   hasNext : Iterator α → Bool
@@ -39,10 +42,9 @@ class Iterable (α : Type) (β : outParam Type) where
 
 export Iterable (push length hasNext next extract curr)
 
-
 instance : Iterable String Char where
   push := String.push
-  length s := s.length 
+  length s := s.length
   hasNext | ⟨s, i⟩ => i < s.endPos.byteIdx
   next | ⟨s, i⟩ => ⟨s, (s.next ⟨i⟩).byteIdx⟩
   extract

@@ -1,8 +1,15 @@
 import Straume.Zeptoparsec
+import Straume.Iterator
+import Straume.Combinators
+
+open Straume.Iterator (Iterable Iterator)
+open Straume.Combinators (const)
 
 /- Chunks bundle Stream data into objects. The benchmark for the good UX for
 those is for them to be parsable entirely with a Megaparsec. -/
-namespace Chunk
+namespace Straume.Chunk
+universe u
+
 
 /-
 A way to terminate a stream.
@@ -47,3 +54,38 @@ inductive Chunk (α : Type u) where
 | nil
 | cont : α → Chunk α
 | fin : α × Terminator → Chunk α
+
+export Chunk (nil cont fin)
+
+instance : Functor Chunk where
+  map f fxs := match fxs with
+    | .nil => .nil
+    | .cont xs => .cont $ f xs
+    | .fin (xs, terminator) => .fin (f xs, terminator)
+
+instance : Inhabited (Chunk α) where
+  default := .nil
+
+private def coreturn' (fxs : Chunk α) [Inhabited α] : α :=
+  match fxs with
+    | .nil => default
+    | .cont xs => xs
+    | .fin (xs, _) => xs
+
+variable (γ : Type u) [BEq γ] [Inhabited γ] [Iterable γ ⅌]
+
+instance : Iterable (Chunk γ) ⅌ where
+  push fxs y := (fun xs => Iterable.push xs y) <$> fxs
+  length fxs := Iterable.length $ coreturn' fxs
+  hasNext it := Iterable.hasNext $ Iterator.mk (coreturn' it.s) (it.i)
+  next it :=
+    Iterator.mk it.s (Iterable.next $ Iterator.mk (coreturn' it.s) (it.i)).i
+  extract it₁ it₂ :=
+    let g := Iterator.extract (Iterator.mk (coreturn' it₁.s) (it₁.i))
+                              (Iterator.mk (coreturn' it₂.s) (it₂.i))
+    -- TODO: is this correct?
+    if g == default then
+      .nil
+    else
+      (const g) <$> it₁.s
+  curr it := Iterator.curr (Iterator.mk (coreturn' it.s) (it.i))
