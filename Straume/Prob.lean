@@ -3,6 +3,7 @@ import Straume.Combinators
 namespace Straume.Prob
 
 /- False positives are used to represent probabilistic results.
+Please note that `perhaps 0.0` makes no sense, use `.no` constructor instead!
 
 TODO: It's known that the runtime we're targetting at Yatima isn't well-suited for Floats.
 Our ProbParOrd wants Float probabilities.
@@ -13,6 +14,11 @@ inductive FalsePositive where
 | perhaps : Float → FalsePositive
 | no
   deriving Repr, BEq
+
+instance : HMul FalsePositive FalsePositive FalsePositive where
+  hMul x y := match (x, y) with
+  | (.perhaps p₀, .perhaps p₁) => .perhaps (p₀ * p₁)
+  | _ => .no
 
 /- False negatives aren't currently used and are defined just for symmetry. -/
 inductive FalseNegative where
