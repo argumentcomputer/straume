@@ -19,14 +19,17 @@ to the source iterator.
 
 namespace Zeptoparsec
 
-variable {σ : Type} [Iterable σ ε] [Inhabited σ] [DecidableEq σ] [DecidableEq ε] [Inhabited ε]
+universe u
+universe v
 
-inductive ParseResult (σ α: Type) where
+variable {σ : Type u} [Iterable σ ε] [Inhabited σ] [DecidableEq σ] [DecidableEq ε] [Inhabited ε]
+
+inductive ParseResult (σ α: Type u) where
   | success (it : Iterator σ) (res : α)
   | error (it : Iterator σ) (err : String)
   deriving Repr, DecidableEq
 
-def Parsec (σ α : Type) : Type := Iterator σ → ParseResult σ α
+def Parsec (σ α : Type u) : Type u := Iterator σ → ParseResult σ α
 
 open ParseResult
 
@@ -39,7 +42,7 @@ def deparse : ParseResult σ α → Iterator σ
   | success it _ => it
   | error   it _ => it
 
-instance (α : Type) : Inhabited (Parsec σ α) :=
+instance (α : Type u) : Inhabited (Parsec σ α) :=
   ⟨λ it => error it ""⟩
 
 @[inline]
@@ -47,7 +50,7 @@ protected def pure (a : α) : Parsec σ α := λ it =>
  success it a
 
 @[inline]
-def bind {α β : Type} (f : Parsec σ α) (g : α → Parsec σ β) : Parsec σ β := λ it =>
+def bind {α β : Type u} (f : Parsec σ α) (g : α → Parsec σ β) : Parsec σ β := λ it =>
   match f it with
   | success rem a => g a rem
   | error pos msg => error pos msg
@@ -82,11 +85,11 @@ instance : Alternative (Parsec σ) :=
 def expectedEndOfInput := "expected end of input"
 
 @[inline]
-def eof : Parsec σ Unit := fun it =>
+def eof : Parsec σ PUnit := fun it =>
   if hasNext it then
     error it expectedEndOfInput
   else
-    success it ()
+    success it PUnit.unit
 
 @[inline]
 partial def manyCore (p : Parsec σ α) (acc : Array α) : Parsec σ $ Array α :=
@@ -147,7 +150,7 @@ def pstring (s : σ) : Parsec σ σ := λ it =>
     error it s!"expected something else"
 
 @[inline]
-def skipString (s : σ) : Parsec σ Unit := pstring s *> pure ()
+def skipString (s : σ) : Parsec σ PUnit := pstring s *> pure PUnit.unit
 
 def unexpectedEndOfInput := "unexpected end of input"
 
@@ -163,7 +166,7 @@ def pchar (c : ε) : Parsec σ ε := attempt do
   if (←anyChar) = c then pure c else fail s!"expected some other char"
 
 @[inline]
-def skipChar (c : ε) : Parsec σ Unit := pchar c *> pure ()
+def skipChar (c : ε) : Parsec σ PUnit := pchar c *> pure PUnit.unit
 
 @[inline]
 def satisfy (p : ε → Bool) : Parsec σ ε := attempt do
@@ -171,10 +174,10 @@ def satisfy (p : ε → Bool) : Parsec σ ε := attempt do
   if p c then return c else fail "condition not satisfied"
 
 @[inline]
-def notFollowedBy (p : Parsec σ α) : Parsec σ Unit := λ it =>
+def notFollowedBy (p : Parsec σ α) : Parsec σ PUnit := λ it =>
   match p it with
   | success _ _ => error it ""
-  | error _ _ => success it ()
+  | error _ _ => success it PUnit.unit
 
 @[inline]
 def peek? : Parsec σ (Option ε) := fun it =>
@@ -189,9 +192,9 @@ def peek! : Parsec σ ε := do
   return c
 
 @[inline]
-def skip : Parsec σ Unit := fun it =>
+def skip : Parsec σ PUnit := fun it =>
   if hasNext it then
-    success (next it) ()
+    success (next it) PUnit.unit
   else
     error it unexpectedEndOfInput
 

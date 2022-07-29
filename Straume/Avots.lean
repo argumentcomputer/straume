@@ -1,8 +1,10 @@
 import Straume.Chunk
 import Straume.Iterator
+import Straume.Zeptoparsec
 
 open Straume.Chunk (Chunk)
 open Straume.Iterator (Iterable)
+open Zeptoparsec (Parsec)
 
 namespace Straume.Avots
 
@@ -28,14 +30,17 @@ As in, their underlying data type contains stuff.
 I'm sorry for using C++ notation to denote the composite value type.
 I promise, I tried to come up with a juicy, semantic, one-letter name for it, but failed.
 -/
-class Avots (m : Type u → Type v)
-            (source : Type u)
-            (TCompositeValue : Type u)
-            [Iterable TCompositeValue β] where
+class Chunky (m : Type u → Type v)
+             (source : Type u)
+             (TCompositeValue : Type u)
+             [Iterable TCompositeValue β] where
+  buffer : Nat := 2048
   take1 : m source → m (Chunk TCompositeValue × source)
   takeN (container : Type u → Type u)
         : Nat → m source → m (container (Chunk TCompositeValue) × source)
-  -- takeZepto :
+  listN := takeN List
+  arrN := takeN Array
+--   takeZepto :
 
 -- structure Greater (α : Type) where
 --   (β : Type)
