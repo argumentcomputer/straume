@@ -9,6 +9,8 @@ open Straume.Iterator
 open Zeptoparsec
 open ParseResult
 
+open LSpec
+
 def isSuccess : ParseResult α β → Bool
   | success _ _ => true
   | error _ _ => false
@@ -25,8 +27,6 @@ def monadTest : TestSeq :=
   test "Zeptoparsec.bind works" $
     (pstring "T" >>= const (return 'T')) srcStr = t
 
-#lspec monadTest
-
 def someCharsTest : TestSeq :=
   let pRes := someChars anyChar 4 srcStr
   test "someChars parses successfully" (isSuccess pRes) $ match pRes with
@@ -34,8 +34,6 @@ def someCharsTest : TestSeq :=
       test s!"First 4 chars of '{srcStr.s}' is 'This'" ("This" = res) $
       test "Iterator now points to position 4" (4 = pos.i)
     | error _ _ => test "Unreachable" false
-
-#lspec someCharsTest
 
 def asciiTest : TestSeq :=
   let expectedPrefix := "This is a test string of "
@@ -46,8 +44,6 @@ def asciiTest : TestSeq :=
   test "Next 2 chars are digits" $
     many1Chars digit (deparse afterLetters) =
     someChars anyChar 2 (deparse expected)
-
-#lspec asciiTest
 
 -- ByteArray parser tests
 
@@ -61,10 +57,7 @@ def manyRepsTest : TestSeq :=
   test "We can parse out groups of max 3 bits" $
     isSuccess $ many (someChars anyChar 3) srcBits
 
-#lspec manyRepsTest
-
-def main : IO UInt32 := do
-  let _ ← lspec monadTest
-  let _ ← lspec someCharsTest
-  let _ ← lspec asciiTest
-  lspec manyRepsTest
+def main := lspecIO $
+  manyRepsTest
+  ++ monadTest
+  ++ asciiTest
