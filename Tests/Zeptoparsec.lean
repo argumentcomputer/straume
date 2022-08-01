@@ -58,6 +58,7 @@ def manyRepsTest : TestSeq :=
     isSuccess $ many (someChars anyChar 3) srcBits
 
 def main := lspecIO $
-  manyRepsTest
-  ++ monadTest
+  monadTest
+  ++ someCharsTest
   ++ asciiTest
+  ++ manyRepsTest

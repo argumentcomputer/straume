@@ -73,7 +73,7 @@ class Avots (m : Type u → Type v)
   parse : p v v → m s → m (v × s)
   parseN (t : Type u → Type u) : Nat → p v v → m s → m (t v × s)
   parseList := parseN List
-  parseArr := parseN Array
+  parseArr := parseN Arr
   chunkLength : m v → m (Nat × v)
 
 -- structure Greater (α : Type) where
