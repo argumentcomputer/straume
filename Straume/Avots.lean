@@ -2,9 +2,9 @@ import Straume.Chunk
 import Straume.Iterator
 import Straume.Zeptoparsec
 
-open Straume.Chunk (Chunk)
+open Straume.Chunk (Chunk Terminable)
 open Straume.Chunk
-open Straume.Iterator (Iterable)
+open Straume.Iterator (Iterable Iterator iter)
 open Zeptoparsec
       renaming Parsec → Zepto.Parsec
 open Zeptoparsec
@@ -12,6 +12,7 @@ open Zeptoparsec
 
 /- This module is designed first and foremost to provide Megaparsec users a way to work with greater-than RAM and infinite streams.
 
+TODO: SINK UP OTHER SIGNATURES WITH SIGNATURE FOR AKA
 -/
 namespace Straume.Avots
 
@@ -66,7 +67,8 @@ class Chunky (m : Type u → Type v)
 
 --
 
-/- Very generic version of Chunky. Everything that's Chunky is also Avots. -/
+/- Very generic version of Chunky. Everything that's Chunky is also Avots.
+TODO: Validate that Avots is using SLICES where Aka is using APPEND. -/
 class Avots (m : Type u → Type v)
             (s : Type u)
             (v : Type u) where
@@ -92,17 +94,23 @@ class Aka (m : Type u → Type v)
           -- TODO: See if we can express that _buffer > 0 in types
   take1 (_source : m s) (_buffer : Nat := 2048)
         : m (f v × s)
-  takeN (t : Type u → Type u) (_n : Nat) (_source : m s) (_buffer : Nat := 2048)
-        : m (f (t v) × s)
-  listN := takeN List
-  arrN := takeN Array
---   parse (p : Type u → Type u → Type u)
---         : p v v → m s → m (v × s)
---   parseN (t : Type u → Type u) (p : Type u → Type u → Type u)
---          : Nat → p v v → m s → m (f (t v) × s)
---   parseList := parseN List
---   parseArr := parseN Arr
-  chunkLength : m v → m (Nat × v)
+
+class Flood (m : Type u → Type v)
+            (s : Type u) where
+  flood (_ctx : m s) (_buffer : Nat := 2048)
+        : m s
+
+class Notch (v : Type u) where
+  notch : v → Nat
+
+/- Preventing typeclass clashes in transient dependencies in style. -/
+class Coco (x y : Type u) where
+  coco : y → x
+  replace : y → x → y
+
+instance : Coco String (String × IO.FS.Handle) where
+  coco := Prod.fst
+  replace kl k := (k, Prod.snd kl)
 
 private def readStringN (_ : IO.FS.Handle) (n : Nat) : IO (String × IO.FS.Handle) := sorry
 
@@ -126,8 +134,39 @@ instance : Aka IO (String × IO.FS.Handle) Chunk Char where
         | [] => pure (Chunk.fin (y, Terminator.eos), ("", h₁))
         | _otherwise => pure (Chunk.cont y, (x₁, h₁))
     | y :: rest => pure (Chunk.cont y, (String.mk rest, h))
-  takeN := sorry
-  chunkLength := sorry
+
+variable {℘ : Type u} [Iterable ℘ ⅌]
+def takeN (mx : m s) (n : Nat) (b := 2048)
+          [Aka m s f β] [Coco ℘ s] [Flood m s] [Terminable f ℘] [Monad m]
+          : m (f ℘ × s) := do
+  -- BEST EFFORT STARTS
+  let src ← mx
+  let l := Iterable.length $ (Coco.coco src : ℘)
+  let src₁ ← Flood.flood mx (max b ((n - l) + 1))
+  let buffer₁ : ℘ := Coco.coco src₁
+  let k := Iterable.length buffer₁
+  -- BEST EFFORT ENDS
+  -- EXTRACTION STARTS
+  let it₀ : Iterator ℘ := iter buffer₁
+  let it₁ := { it₀ with i := n }
+  let y := Iterable.extract it₀ it₁
+  -- TODO: MAKE SURE THAT ALL THE EXTRACTS IN Iterable INSTANCES HAVE THE SAME SEMANTICS!!!
+  -- (RE: OFF BY ONE ERRORS)
+  let restIt₀ := { it₀ with i := n }
+  let restIt₁ := { it₀ with i := k }
+  -- | v(0)    v(4)
+  -- | с а ш к а в ы х о д и с м я ч о м |
+  let rest := Iterable.extract restIt₀ restIt₁
+  -- EXTRACTION ENDS
+  -- CHUNK PREPARATION STARTS
+  let res? := match k - n with
+  | 1 => Terminable.mkCont y
+  | _otherwise => Terminable.mkFin (y, .eos)
+  let res := if (k == 0) && (l == 0) then Terminable.mkNil else res?
+  -- CHUNK PREPARATION ENDS
+  pure (res, Coco.replace src₁ rest)
+
+-- TODO: CAN WE ACTUALLY CALL takeN
 
 -- structure Greater (α : Type) where
 --   (β : Type)

@@ -57,6 +57,11 @@ inductive Chunk (α : Type u) where
 
 export Chunk (nil cont fin)
 
+class Terminable (f : Type u → Type u) (α : Type u) where
+  mkNil : f α
+  mkCont : α → f α
+  mkFin : α × Terminator → f a
+
 instance : Functor Chunk where
   map f fxs := match fxs with
     | .nil => .nil
