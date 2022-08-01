@@ -83,3 +83,9 @@ instance : Iterable (List Bit) Bit where
 def forward [Iterable α β] : Iterator α → Nat → Iterator α
   | it, 0   => it
   | it, n+1 => forward (next it) n
+
+def fromList {α β : Type u} (xs : List β) [Inhabited α] [Iterable α β] : α :=
+  -- TODO: Consider adding fromList to Iterable?..
+  -- if (α = (List Bit)) ∧ (β = Bit)
+  -- then xs
+  List.foldl (fun acc x => Iterable.push acc x) default xs
