@@ -108,24 +108,24 @@ private def readStringN (_ : IO.FS.Handle) (n : Nat) : IO (String × IO.FS.Handl
 
 instance : Aka IO (String × IO.FS.Handle) Chunk Char where
   take1 mxh b := do
-      let (x, h) ← mxh
-      match x.data with
-      | [] => let (x₁, h₁) ← readStringN h b
-              let isEof ← BaseIO.toIO $ IO.FS.Handle.isEof h₁
-              match x₁.data with
-              | y :: [] => if isEof then
-                              pure (Chunk.fin (y, Terminator.eos), ("", h₁))
-                           else
-                              -- If b = 1, we want to continue, even though we just read 1 byte
-                              pure (Chunk.cont y, ("", h₁))
-              | y :: rest => pure (Chunk.cont y, (String.mk rest, h₁))
-              | [] => pure (Chunk.nil, ("", h₁))
-      | y :: [] => let (x₁, h₁) ← readStringN h b
-                   match x₁.data with
-                   | [] => pure (Chunk.fin (y, Terminator.eos), ("", h₁))
-                   | _otherwise => pure (Chunk.cont y, (x₁, h₁))
-      | y :: rest =>
-            pure ((Chunk.cont y), (String.mk rest, h))
+    let (x, h) ← mxh
+    match x.data with
+    | [] =>
+        let (x₁, h₁) ← readStringN h b
+        match x₁.data with
+        | []      => pure (Chunk.nil, ("", h₁))
+        | y :: [] =>
+            let isEof ← BaseIO.toIO $ IO.FS.Handle.isEof h₁
+            if isEof then pure (Chunk.fin (y, Terminator.eos), ("", h₁))
+            -- If b = 1, we want to continue, even though we just read 1 byte
+            else pure (Chunk.cont y, ("", h₁))
+        | y :: rest => pure (Chunk.cont y, (String.mk rest, h₁))
+    | y :: [] =>
+        let (x₁, h₁) ← readStringN h b
+        match x₁.data with
+        | [] => pure (Chunk.fin (y, Terminator.eos), ("", h₁))
+        | _otherwise => pure (Chunk.cont y, (x₁, h₁))
+    | y :: rest => pure (Chunk.cont y, (String.mk rest, h))
   takeN := sorry
   chunkLength := sorry
 
