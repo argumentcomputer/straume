@@ -24,6 +24,15 @@ inductive Terminator where
 | timeout
 | ioerr : IO.Error → Terminator
 
+instance : ToString Terminator where
+  toString x := match x with
+  | .eos => "Terminator.eos"
+  | .timeout => "Terminator.timeout"
+  | .ioerr _e => "Terminator.⟪system error⟫"
+
+instance : Repr Terminator where
+  reprPrec x _n := ToString.toString x
+
 /-
 Suppose we have a variable length binary protocol such that the message length
 is encoded as a three bit integer.
@@ -54,6 +63,13 @@ inductive Chunk (α : Type u) where
 | nil
 | cont : α → Chunk α
 | fin : α × Terminator → Chunk α
+deriving Repr
+
+instance [ToString α] : ToString (Chunk α) where
+  toString x := match x with
+  | .nil => "Chunk.nil"
+  | .cont y => s!"Chunk.cont \"{y}\""
+  | .fin (y, t) => s!"Chunk.fin (\"{y}\", {t})"
 
 export Chunk (nil cont fin)
 
@@ -65,6 +81,8 @@ class Terminable (f : Type u → Type u) (α : Type u) where
 instance {α : Type u} : Terminable Chunk α where
   mkNil := .nil
   mkCont := .cont
+  -- TODO: Remove Terminator from here, just make the sig α → f α
+  -- TODO: Make a function that maybe extracts terminator from f α !!!
   mkFin (x : α × Terminator) := .fin x
 
 instance : Functor Chunk where

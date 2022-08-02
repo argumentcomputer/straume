@@ -94,7 +94,7 @@ class Aka (m : Type u → Type v)
           (v : Type u) where
           -- TODO: See if we can express that _buffer > 0 in types
   take1 (_source : m s) (_buffer : Nat := 2048)
-        : m (f v × s)
+        : m ((f v) × s)
 
 class Biterable (β : Type v) (α : outParam (Type u)) where
   composite : Type u
@@ -153,8 +153,8 @@ instance : Flood IO (String × IO.FS.Handle) where
     let (x₁, h₁) ← readStringNUnchecked h b
     pure (String.append x x₁, h₁)
 
-def takeN {℘ ⅌ : Type u} (mx : m s) (n : Nat) (b := 2048)
-          [Aka m s f β] [Coco ℘ s] [Flood m s] [Terminable f ℘] [Monad m] [Iterable ℘ ⅌] [Biterable ⅌ ℘]
+def takeN {f : Type u → Type u} {℘ ⅌ : Type u} (mx : m s) (n : Nat) (b := 2048)
+          [Coco ℘ s] [Flood m s] [Terminable f ℘] [Monad m] [Iterable ℘ ⅌] [Biterable ⅌ ℘] [Aka m s f ⅌]
           : m (f ℘ × s) := do
   -- BEST EFFORT STARTS
   let src ← mx
@@ -177,8 +177,8 @@ def takeN {℘ ⅌ : Type u} (mx : m s) (n : Nat) (b := 2048)
   -- EXTRACTION ENDS
   -- CHUNK PREPARATION STARTS
   let res? := match k - n with
-  | 1 => Terminable.mkCont y
-  | _otherwise => Terminable.mkFin (y, .eos)
+  | 0 => Terminable.mkFin (y, .eos)
+  | _otherwise => Terminable.mkCont y
   let res := if (k == 0) && (l == 0) then Terminable.mkNil else res?
   -- CHUNK PREPARATION ENDS
   pure (res, Coco.replace src₁ rest)

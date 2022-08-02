@@ -3,7 +3,6 @@ open Bit
 
 namespace Straume.Iterator
 universe u
-universe v
 
 /-
   We implement a `Repr` instance for `ByteArray` instead of a `ToString`
@@ -32,7 +31,7 @@ structure Iterator (α : Type u) where
 def iter (s : α) : Iterator α :=
   ⟨s, 0⟩
 
-class Iterable (α : Type u) (β : outParam (Type v)) where
+class Iterable (α : Type u) (β : outParam (Type u)) where
   push : α → β → α
   length : α → Nat
   hasNext : Iterator α → Bool
