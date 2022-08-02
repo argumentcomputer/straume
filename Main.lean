@@ -41,3 +41,4 @@ def main : IO Unit := do
                       takeWhile (fun c => c != ' ') (pure ("", handle)))
   IO.println s!"CHUNK IS {zoink3}"
   IO.println s!"BUFFER IS {if buff == "" then "EMPTY" else buff}"
+  IO.println s!"BTW, CHUNK'S SIZE {if String.length "import" == chunkLength zoink3 then "IS" else "ISN'T"} 6"
