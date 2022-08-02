@@ -1,12 +1,16 @@
 namespace Straume.MonadEmit
 
 class MonadEmit (m : Type u → Type v) (source : Type u) (value : Type u) where
-  askFrom : m source → Nat → m (value × source)
+  askFrom : source → Nat → m (value × source)
 
 export MonadEmit (askFrom)
 
 instance : MonadEmit IO IO.FS.Handle ByteArray where
-  askFrom (src : IO IO.FS.Handle) (n : Nat) := do
-    let handler ← src
-    let bs ← IO.FS.Handle.read handler (USize.ofNat n)
-    return (bs, handler)
+  askFrom (src : IO.FS.Handle) (n : Nat) := do
+    let bs ← IO.FS.Handle.read src (USize.ofNat n)
+    return (bs, src)
+
+instance : MonadEmit IO IO.FS.Handle String where
+  askFrom src n := do
+    let bah ← MonadEmit.askFrom src n
+    return (String.fromUTF8Unchecked bah.1, bah.2)

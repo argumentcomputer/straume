@@ -1,6 +1,7 @@
 import Straume.Chunk
 import Straume.Iterator
 import Straume.Zeptoparsec
+import Straume.MonadEmit
 
 open Straume.Chunk (Chunk Terminable)
 open Straume.Chunk
@@ -95,16 +96,25 @@ class Aka (m : Type u → Type v)
   take1 (_source : m s) (_buffer : Nat := 2048)
         : m (f v × s)
 
+class Biterable (β : Type v) (α : outParam (Type u)) where
+  composite : Type u
+  atomic : Type v
+
+instance : Biterable Char String where
+  composite := String
+  atomic := Char
+
 class Flood (m : Type u → Type v)
             (s : Type u) where
   flood (_ctx : m s) (_buffer : Nat := 2048)
         : m s
 
+/- Do we need this even?.. I guess, nice-to-have. -/
 class Notch (v : Type u) where
   notch : v → Nat
 
 /- Preventing typeclass clashes in transient dependencies in style. -/
-class Coco (x y : Type u) where
+class Coco (x : Type u) (y : outParam (Type u)) where
   coco : y → x
   replace : y → x → y
 
@@ -112,14 +122,16 @@ instance : Coco String (String × IO.FS.Handle) where
   coco := Prod.fst
   replace kl k := (k, Prod.snd kl)
 
-private def readStringN (_ : IO.FS.Handle) (n : Nat) : IO (String × IO.FS.Handle) := sorry
+open MonadEmit (MonadEmit) in
+private def readStringNUnchecked (h : IO.FS.Handle) (n : Nat)
+                                 : IO (String × IO.FS.Handle) := MonadEmit.askFrom h n
 
 instance : Aka IO (String × IO.FS.Handle) Chunk Char where
   take1 mxh b := do
     let (x, h) ← mxh
     match x.data with
     | [] =>
-        let (x₁, h₁) ← readStringN h b
+        let (x₁, h₁) ← readStringNUnchecked h b
         match x₁.data with
         | []      => pure (Chunk.nil, ("", h₁))
         | y :: [] =>
@@ -129,15 +141,20 @@ instance : Aka IO (String × IO.FS.Handle) Chunk Char where
             else pure (Chunk.cont y, ("", h₁))
         | y :: rest => pure (Chunk.cont y, (String.mk rest, h₁))
     | y :: [] =>
-        let (x₁, h₁) ← readStringN h b
+        let (x₁, h₁) ← readStringNUnchecked h b
         match x₁.data with
         | [] => pure (Chunk.fin (y, Terminator.eos), ("", h₁))
         | _otherwise => pure (Chunk.cont y, (x₁, h₁))
     | y :: rest => pure (Chunk.cont y, (String.mk rest, h))
 
-variable {℘ : Type u} [Iterable ℘ ⅌]
-def takeN (mx : m s) (n : Nat) (b := 2048)
-          [Aka m s f β] [Coco ℘ s] [Flood m s] [Terminable f ℘] [Monad m]
+instance : Flood IO (String × IO.FS.Handle) where
+  flood mxh b := do
+    let (x, h) ← mxh
+    let (x₁, h₁) ← readStringNUnchecked h b
+    pure (String.append x x₁, h₁)
+
+def takeN {℘ ⅌ : Type u} (mx : m s) (n : Nat) (b := 2048)
+          [Aka m s f β] [Coco ℘ s] [Flood m s] [Terminable f ℘] [Monad m] [Iterable ℘ ⅌] [Biterable ⅌ ℘]
           : m (f ℘ × s) := do
   -- BEST EFFORT STARTS
   let src ← mx
@@ -166,22 +183,4 @@ def takeN (mx : m s) (n : Nat) (b := 2048)
   -- CHUNK PREPARATION ENDS
   pure (res, Coco.replace src₁ rest)
 
--- TODO: CAN WE ACTUALLY CALL takeN
-
--- structure Greater (α : Type) where
---   (β : Type)
---   y : (α × β)
-
--- structure Same (α : Type) where
---   id : α
-
--- #check Same Int
--- #check Int
-
--- #check Int
--- #check Greater Int
-
--- class Avv ... where
---   take1 : m a → m (f b × a)
---   takeN (φ : ...) : Nat → m a → m (φ (f b) × a)
---   ...
+-- #eval takeN
