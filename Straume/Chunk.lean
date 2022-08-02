@@ -73,17 +73,29 @@ instance [ToString α] : ToString (Chunk α) where
 
 export Chunk (nil cont fin)
 
-class Terminable (f : Type u → Type u) (α : Type u) where
+class Terminable (f : Type u → Type u) (α : Type u) (ε : outParam (Type v)) where
   mkNil : f α
   mkCont : α → f α
-  mkFin : α × Terminator → f α
+  mkFin : α → f α
+  mkFault : α → ε → f α
+  un : f α → Option α
+  reason : f α → Option Terminator
 
-instance {α : Type u} : Terminable Chunk α where
+instance {α : Type u} : Terminable Chunk α IO.Error where
   mkNil := .nil
   mkCont := .cont
-  -- TODO: Remove Terminator from here, just make the sig α → f α
-  -- TODO: Make a function that maybe extracts terminator from f α !!!
-  mkFin (x : α × Terminator) := .fin x
+  -- TODO: Currently there's no way to chain reason into mkFin or Fault because we can't generically switch over ε.
+  -- TODO: Move Failable away from Terimable... Solving :up: and making the typeclass working properly?..
+  mkFin (x : α) := .fin (x, .eos)
+  mkFault (x : α) (e : IO.Error) := .fin (x, .ioerr e)
+  un (x : Chunk α) := match x with
+  | .nil => .none
+  | .cont res => .some res
+  | .fin (res, _) => .some res
+  reason (x : Chunk α) := match x with
+  | .nil => .none
+  | .cont _ => .none
+  | .fin (_, e) => .some e
 
 instance : Functor Chunk where
   map f fxs := match fxs with

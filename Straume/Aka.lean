@@ -12,10 +12,8 @@ open Zeptoparsec
       renaming ParseResult → Zepto.Res
 
 /- This module is designed first and foremost to provide Megaparsec users a way to work with greater-than RAM and infinite streams.
-
-TODO: SINK UP OTHER SIGNATURES WITH SIGNATURE FOR AKA
 -/
-namespace Straume.Avots
+namespace Straume.Aka
 
 universe u
 universe v
@@ -33,58 +31,6 @@ universe v
 --   takeN : Nat → S → Option (Chunk \a × S)
 --   takeWhile : (Token → Bool) → S → (Chunk \a × S)
 
-
-/- Gets one or more finite (for the time being) `Chunk`s out of a perhaps infinite stream.
-These chunks themselves are composite.
-As in, their underlying data type contains stuff.
-I'm sorry for using C++ notation to denote the composite value type.
-I promise, I tried to come up with a juicy, semantic, one-letter name for it, but failed.
--/
-class Chunky (m : Type u → Type v)
-             (source : Type u)
-             (TCompositeValue : Type u)
-             [BEq TCompositeValue] [Inhabited TCompositeValue] [Iterable TCompositeValue β]
-             [Monad m]
-             where
-  -- TODO: PERHAPS MAKE A STRATEGY CONFIG FOR ATTEMPTS / GIVING UP
-  take1 : m source → m ((Chunk TCompositeValue) × source)
-  takeN (container : Type u → Type u)
-        : Nat → m source → m (container (Chunk TCompositeValue) × source)
-  listN := takeN List
-  arrN := takeN Array
---   takeZepto
---       (_p : Zepto.Parsec TCompositeValue TCompositeValue)
---       : m source → m ((Chunk TCompositeValue) × source)
---   takeNZepto
---       (container : Type u → Type u)
---       (_n : Nat)
---       (_p : Zepto.Parsec TCompositeValue TCompositeValue)
---       : m source → m (container (Chunk TCompositeValue) × source)
---   listNZepto := takeNZepto List
---   arrNZepto := takeNZepto Array
-  chunkLength (wr : m (Chunk TCompositeValue))
-              : m (Chunk TCompositeValue × Nat) :=
-      wr >>= fun c => pure (c, Iterable.length c)
-
---
-
-/- Very generic version of Chunky. Everything that's Chunky is also Avots.
-TODO: Validate that Avots is using SLICES where Aka is using APPEND. -/
-class Avots (m : Type u → Type v)
-            (s : Type u)
-            (v : Type u) where
-  take1 : m s → m (v × s)
-  takeN (t : Type u → Type u) : Nat → m s → m (t v × s)
-  listN := takeN List
-  arrN := takeN Array
---   parse (p : Type u → Type u → Type u)
---         : p v v → m s → m (v × s)
---   parseN (t : Type u → Type u) (p : Type u → Type u → Type u)
---          : Nat → p v v → m s → m (t v × s)
---   parseList := parseN List
---   parseArr := parseN Arr
-  chunkLength : m v → m (Nat × v)
-
 /- A way to read atomic values `v` out of a source `s`, which emits `Iterable α v`.
 The information about finality is tacked onto the values of type `v` via type `f`.
 An example of such `f` is `Chunk`. -/
@@ -96,24 +42,20 @@ class Aka (m : Type u → Type v)
   take1 (_source : m s) (_buffer : Nat := 2048)
         : m ((f v) × s)
 
-class Biterable (β : Type v) (α : outParam (Type u)) where
-  composite : Type u
-  atomic : Type v
-
-instance : Biterable Char String where
-  composite := String
-  atomic := Char
-
+/- A way to flood a buffer of some source `s` with more data. -/
 class Flood (m : Type u → Type v)
             (s : Type u) where
   flood (_ctx : m s) (_buffer : Nat := 2048)
         : m s
 
-/- Do we need this even?.. I guess, nice-to-have. -/
+/- Discretely-measurable stuff. -/
 class Notch (v : Type u) where
   notch : v → Nat
 
-/- Preventing typeclass clashes in transient dependencies in style. -/
+/- `Coco`s are `y`s that cary and allow to swap out `x`s.
+So `x`s are "contained" in `y`s.
+Sort of Flipped Coe with an additional `replace` method.
+Preventing typeclass clashes in transient dependencies in style. -/
 class Coco (x : Type u) (y : outParam (Type u)) where
   coco : y → x
   replace : y → x → y
@@ -139,7 +81,8 @@ instance : Aka IO (String × IO.FS.Handle) Chunk Char where
             if isEof then pure (Chunk.fin (y, Terminator.eos), ("", h₁))
             -- If b = 1, we want to continue, even though we just read 1 byte
             else pure (Chunk.cont y, ("", h₁))
-        | y :: rest => pure (Chunk.cont y, (String.mk rest, h₁))
+        | y :: rest =>
+          pure (Chunk.cont y, (String.mk rest, h₁))
     | y :: [] =>
         let (x₁, h₁) ← readStringNUnchecked h b
         match x₁.data with
@@ -154,7 +97,7 @@ instance : Flood IO (String × IO.FS.Handle) where
     pure (String.append x x₁, h₁)
 
 def takeN {f : Type u → Type u} {℘ ⅌ : Type u} (mx : m s) (n : Nat) (b := 2048)
-          [Coco ℘ s] [Flood m s] [Terminable f ℘] [Monad m] [Iterable ℘ ⅌] [Biterable ⅌ ℘] [Aka m s f ⅌]
+          [Coco ℘ s] [Flood m s] [Terminable f ℘ ε] [Monad m] [Iterable ℘ ⅌]
           : m (f ℘ × s) := do
   -- BEST EFFORT STARTS
   let src ← mx
@@ -177,10 +120,35 @@ def takeN {f : Type u → Type u} {℘ ⅌ : Type u} (mx : m s) (n : Nat) (b := 
   -- EXTRACTION ENDS
   -- CHUNK PREPARATION STARTS
   let res? := match k - n with
-  | 0 => Terminable.mkFin (y, .eos)
+  | 0 => Terminable.mkFin y
   | _otherwise => Terminable.mkCont y
   let res := if (k == 0) && (l == 0) then Terminable.mkNil else res?
   -- CHUNK PREPARATION ENDS
   pure (res, Coco.replace src₁ rest)
 
--- #eval takeN
+private partial def takeWhileDo {f : Type u → Type u} {℘ ⅌ : Type u}
+                                (φ : ⅌ → Bool) (mx : m s) (b : Nat) (acc : f ℘)
+                                [Coco ℘ s] [Iterable ℘ ⅌] [Terminable f ℘ ε] [Terminable f ⅌ ε] [Aka m s f ⅌] [Monad m] [Inhabited (m (f ℘ × s))] [Inhabited ℘]
+                                : m (f ℘ × s) := do
+  let stream₀ ← mx
+  let (atom, stream) ← (Aka.take1 mx b : m (f ⅌ × s))
+  match Terminable.un atom with
+  | .none => pure (acc, stream₀)
+  | .some c =>
+    if φ c then
+      match (Terminable.un acc, Terminable.reason acc, Terminable.reason atom) with
+      -- cont cases.
+      | (.none, .none, .none) => takeWhileDo φ (pure stream) b $ Terminable.mkCont (Iterable.push default c)
+      | (.some ys, .none, .none) => takeWhileDo φ (pure stream) b $ Terminable.mkCont (Iterable.push ys c)
+      -- fin cases. We forget the error. It's a TODO.
+      | (.none, .none, .some _e) => pure (Terminable.mkFin (Iterable.push default c), stream)
+      | (.some ys, .none, .some _e) => pure (Terminable.mkFin (Iterable.push ys c), stream)
+      -- nil case.
+      | _otherwise => pure (acc, stream₀)
+    else
+      pure (acc, stream₀)
+
+partial def takeWhile {f : Type u → Type u} {℘ ⅌ : Type u} (φ : ⅌ → Bool) (mx : m s) (b := 2048)
+              [Coco ℘ s] [Iterable ℘ ⅌] [Terminable f ℘ ε] [Terminable f ⅌ ε] [Aka m s f ⅌] [Monad m] [Inhabited (m (f ℘ × s))] [Inhabited ℘]
+              : m (f ℘ × s) :=
+  takeWhileDo φ mx b (Terminable.mkNil : f ℘)
