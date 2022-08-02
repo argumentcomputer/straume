@@ -81,14 +81,13 @@ instance : Aka IO (String × IO.FS.Handle) Chunk Char where
             if isEof then pure (Chunk.fin (y, Terminator.eos), ("", h₁))
             -- If b = 1, we want to continue, even though we just read 1 byte
             else pure (Chunk.cont y, ("", h₁))
-        | y :: rest =>
-          pure (Chunk.cont y, (String.mk rest, h₁))
+        | y :: rest => pure (Chunk.cont y, (⟨rest⟩, h₁))
     | y :: [] =>
         let (x₁, h₁) ← readStringNUnchecked h b
         match x₁.data with
         | [] => pure (Chunk.fin (y, Terminator.eos), ("", h₁))
         | _otherwise => pure (Chunk.cont y, (x₁, h₁))
-    | y :: rest => pure (Chunk.cont y, (String.mk rest, h))
+    | y :: rest => pure (Chunk.cont y, (⟨rest⟩, h))
 
 instance : Flood IO (String × IO.FS.Handle) where
   flood mxh b := do
@@ -96,42 +95,34 @@ instance : Flood IO (String × IO.FS.Handle) where
     let (x₁, h₁) ← readStringNUnchecked h b
     pure (String.append x x₁, h₁)
 
-def takeN {f : Type u → Type u} {℘ ⅌ : Type u} (mx : m s) (n : Nat) (b := 2048)
-          [Coco ℘ s] [Flood m s] [Terminable f ℘ ε] [Monad m] [Iterable ℘ ⅌]
-          : m (f ℘ × s) := do
-  -- BEST EFFORT STARTS
+def takeN (mx : m s) (n : Nat) (b : Nat := 2048)
+          [Coco α s] [Flood m s] [Terminable f α ε] [Monad m] [Iterable α β]
+          : m (f α × s) := do
+  -- BEST EFFORT
   let src ← mx
-  let l := Iterable.length $ (Coco.coco src : ℘)
-  let src₁ ← Flood.flood mx (max b ((n - l) + 1))
-  let buffer₁ : ℘ := Coco.coco src₁
-  let k := Iterable.length buffer₁
-  -- BEST EFFORT ENDS
-  -- EXTRACTION STARTS
-  let it₀ : Iterator ℘ := iter buffer₁
+  let l := Iterable.length (Coco.coco src : α)
+  let srcₑ ← Flood.flood mx $ max b ((n - l) + 1) -- We expand the buffer
+  -- EXTRACTION
+  let it₀ := iter $ Coco.coco srcₑ
   let it₁ := { it₀ with i := n }
-  let y := Iterable.extract it₀ it₁
-  -- TODO: MAKE SURE THAT ALL THE EXTRACTS IN Iterable INSTANCES HAVE THE SAME SEMANTICS!!!
-  -- (RE: OFF BY ONE ERRORS)
-  let restIt₀ := { it₀ with i := n }
-  let restIt₁ := { it₀ with i := k }
-  -- | v(0)    v(4)
-  -- | с а ш к а в ы х о д и с м я ч о м |
-  let rest := Iterable.extract restIt₀ restIt₁
-  -- EXTRACTION ENDS
-  -- CHUNK PREPARATION STARTS
-  let res? := match k - n with
-  | 0 => Terminable.mkFin y
-  | _otherwise => Terminable.mkCont y
-  let res := if (k == 0) && (l == 0) then Terminable.mkNil else res?
-  -- CHUNK PREPARATION ENDS
-  pure (res, Coco.replace src₁ rest)
+  let firstN := Iterable.extract it₀ it₁
+  -- CHUNK PREPARATION
+  let k := Iterable.length $ it₀.s
+  let res :=
+    if k == 0 && l == 0
+    then Terminable.mkNil -- Expansion unsuccessful => Stream was always empty
+    else match k - n with
+      | 0 => Terminable.mkFin firstN -- We expanded to less than `n`
+      | _otherwise => Terminable.mkCont firstN
+  pure (res, Coco.replace srcₑ $ Iterable.extract it₁ { it₁ with i := k })
 
-private partial def takeWhileDo {f : Type u → Type u} {℘ ⅌ : Type u}
-                                (φ : ⅌ → Bool) (mx : m s) (b : Nat) (acc : f ℘)
-                                [Coco ℘ s] [Iterable ℘ ⅌] [Terminable f ℘ ε] [Terminable f ⅌ ε] [Aka m s f ⅌] [Monad m] [Inhabited (m (f ℘ × s))] [Inhabited ℘]
-                                : m (f ℘ × s) := do
+private partial def takeWhileDo
+  {α β : Type u} (φ : β → Bool) (mx : m s) (b : Nat) (acc : f α)
+    [Coco α s] [Iterable α β] [Terminable f α ε] [Terminable f β ε]
+    [Aka m s f β] [Monad m] [Inhabited (m (f α × s))] [Inhabited α]
+      : m (f α × s) := do
   let stream₀ ← mx
-  let (atom, stream) ← (Aka.take1 mx b : m (f ⅌ × s))
+  let (atom, stream) ← (Aka.take1 mx b : m (f β × s))
   match Terminable.un atom with
   | .none => pure (acc, stream₀)
   | .some c =>
@@ -141,22 +132,21 @@ private partial def takeWhileDo {f : Type u → Type u} {℘ ⅌ : Type u}
       | (.none, .none, .none) => takeWhileDo φ (pure stream) b $ Terminable.mkCont (Iterable.push default c)
       | (.some ys, .none, .none) => takeWhileDo φ (pure stream) b $ Terminable.mkCont (Iterable.push ys c)
       -- fin cases. We forget the error. It's a TODO.
-      | (.none, .none, .some _e) => pure (Terminable.mkFin (Iterable.push default c), stream)
-      | (.some ys, .none, .some _e) => pure (Terminable.mkFin (Iterable.push ys c), stream)
+      | (.none, .none, .some _e) =>
+        pure (Terminable.mkFin $ Iterable.push default c, stream)
+      | (.some ys, .none, .some _e) =>
+        pure (Terminable.mkFin $ Iterable.push ys c, stream)
       -- nil case.
       | _otherwise => pure (acc, stream₀)
     else
       pure (acc, stream₀)
 
-partial def takeWhile {f : Type u → Type u} {℘ ⅌ : Type u} (φ : ⅌ → Bool) (mx : m s) (b := 2048)
-              [Coco ℘ s] [Iterable ℘ ⅌] [Terminable f ℘ ε] [Terminable f ⅌ ε] [Aka m s f ⅌] [Monad m] [Inhabited (m (f ℘ × s))] [Inhabited ℘]
-              : m (f ℘ × s) :=
-  takeWhileDo φ mx b (Terminable.mkNil : f ℘)
+partial def takeWhile (φ : β → Bool) (mx : m s) (b := 2048)
+  [Coco α s] [Iterable α β] [Terminable f α ε] [Terminable f β ε] [Aka m s f β]
+  [Monad m] [Inhabited (m (f α × s))] [Inhabited α]
+    : m (f α × s) := takeWhileDo φ mx b (Terminable.mkNil : f α)
 
-def chunkLength {f : Type u → Type u} {℘ ⅌ : Type u}
-                (fx : f ℘)
-                [Terminable f ℘ ε] [Iterable ℘ ⅌]
-                : Nat :=
+def chunkLength (fx : f α) [Terminable f α ε] [Iterable α β] : Nat :=
   match (Terminable.un fx) with
   | .none => 0
   | .some e => Iterable.length e

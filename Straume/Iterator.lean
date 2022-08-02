@@ -31,6 +31,8 @@ structure Iterator (α : Type u) where
 def iter (s : α) : Iterator α :=
   ⟨s, 0⟩
 
+-- TODO: MAKE SURE THAT ALL THE EXTRACTS IN Iterable INSTANCES HAVE THE SAME SEMANTICS!!!
+-- (RE: OFF BY ONE ERRORS)
 class Iterable (α : Type u) (β : outParam (Type u)) where
   push : α → β → α
   length : α → Nat
