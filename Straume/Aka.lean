@@ -152,3 +152,11 @@ partial def takeWhile {f : Type u → Type u} {℘ ⅌ : Type u} (φ : ⅌ → B
               [Coco ℘ s] [Iterable ℘ ⅌] [Terminable f ℘ ε] [Terminable f ⅌ ε] [Aka m s f ⅌] [Monad m] [Inhabited (m (f ℘ × s))] [Inhabited ℘]
               : m (f ℘ × s) :=
   takeWhileDo φ mx b (Terminable.mkNil : f ℘)
+
+def chunkLength {f : Type u → Type u} {℘ ⅌ : Type u}
+                (fx : f ℘)
+                [Terminable f ℘ ε] [Iterable ℘ ⅌]
+                : Nat :=
+  match (Terminable.un fx) with
+  | .none => 0
+  | .some e => Iterable.length e
