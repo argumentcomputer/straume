@@ -46,40 +46,46 @@ export Iterable (push length hasNext next extract curr)
 instance : Iterable String Char where
   push := String.push
   length s := s.length
-  hasNext | ⟨s, i⟩ => i < s.endPos.byteIdx
-  next | ⟨s, i⟩ => ⟨s, (s.next ⟨i⟩).byteIdx⟩
+  hasNext | ⟨s, i⟩ => i < s.endPos.byteIdx - 1
+  next | ⟨s, i⟩ => if i < s.endPos.byteIdx - 1
+    then ⟨s, (s.next ⟨i⟩).byteIdx⟩
+    else ⟨s, i⟩
   extract
     | ⟨s₁, b⟩, ⟨s₂, e⟩ =>
       if s₁ ≠ s₂ || b > e then default
       else s₁.extract ⟨b⟩ ⟨e⟩
-  curr | ⟨s, i⟩ => s.get ⟨i⟩
+  curr | ⟨s, i⟩ => if i < s.endPos.byteIdx
+    then s.get ⟨i⟩
+    else s.get ⟨s.endPos.byteIdx - 1⟩
 
 instance : Iterable ByteArray UInt8 where
   push := ByteArray.push
   length s := s.size
-  hasNext | ⟨s, i⟩ => i < s.size
-  next | ⟨s, i⟩ => ⟨s, i+1⟩
+  hasNext | ⟨s, i⟩ => i < s.size - 1
+  next | ⟨s, i⟩ => if i < s.size - 1 then ⟨s, i+1⟩ else ⟨s, i⟩
   extract
     | ⟨s₁, b⟩, ⟨s₂, e⟩ =>
       if s₁ ≠ s₂ || b > e then default
       else s₁.extract b e
   curr | ⟨s, i⟩ => let ts := ByteArray.toList s
-    match ts.get? i with
-      | some curr! => curr!
-      | none       => default -- unreachable: pos shouldn't increase if ¬s.hasNext
+      -- pos shouldn't increase if ¬s.hasNext, but it's possible to construct
+      -- such an iterator manually, so we have to return the last byte.
+    let i' := if i < s.size then i else s.size - 1
+    ts.get! i'
 
 instance : Iterable (List Bit) Bit where
   push := List.concat
   length s := s.length
-  hasNext | ⟨s, i⟩ => i < s.length
-  next | ⟨s, i⟩ => ⟨s, i+1⟩
+  hasNext | ⟨s, i⟩ => i < s.length - 1
+  next | ⟨s, i⟩ => if i < s.length - 1 then ⟨s, i+1⟩ else ⟨s, i⟩
   extract
     | ⟨s₁, b⟩, ⟨s₂, e⟩ =>
       if s₁ ≠ s₂ then default
       else List.extract s₁ b e
-  curr | ⟨s, i⟩ => match s.get? i with
-      | some curr! => curr!
-      | none       => default -- unreachable: pos shouldn't increase if ¬s.hasNext
+  curr | ⟨s, i⟩ => let i' := if i < s.length then i else s.length - 1
+      -- pos shouldn't increase if ¬s.hasNext, but it's possible to construct
+      -- such an iterator manually, so we have to return the last byte.
+    s.get! i'
 
 def forward [Iterable α β] : Iterator α → Nat → Iterator α
   | it, 0   => it

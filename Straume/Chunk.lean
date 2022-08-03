@@ -91,7 +91,7 @@ instance {α : Type u} : Terminable Chunk α where
   reason
     | .nil => .none
     | .cont _ => .none
-    | .fin (_, _) => .some ()
+    | .fin _ => .some ()
 
 instance : Functor Chunk where
   map | _, .nil => .nil
