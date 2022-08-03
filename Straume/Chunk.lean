@@ -74,14 +74,14 @@ instance [ToString α] : ToString (Chunk α) where
 export Chunk (nil cont fin)
 
 -- Terminable only works with .eos, which we "model" with "Option Unit"
-class Terminable (f : Type u → Type u) (α : Type u) where
+class Terminable (f : Type u → Type u) where
   mkNil : f α
   mkCont : α → f α
   mkFin : α → f α
   un : f α → Option α
   reason : f α → Option Unit
 
-instance {α : Type u} : Terminable Chunk α where
+instance : Terminable Chunk where
   mkNil := .nil
   mkCont := .cont
   mkFin x := .fin (x, .eos)
@@ -92,6 +92,14 @@ instance {α : Type u} : Terminable Chunk α where
     | .nil => .none
     | .cont _ => .none
     | .fin _ => .some ()
+
+instance [Terminable f] : Functor f where
+  map φ fa :=
+    match (Terminable.un fa, Terminable.reason fa) with
+    | (.some y, .none) => Terminable.mkCont $ φ y
+    | (.some y, .some ()) => Terminable.mkFin $ φ y
+    | _otherwise => Terminable.mkNil
+  -- map | f, fa => match (Terminable.un fa, Terminable.reason fa) with
 
 instance : Functor Chunk where
   map | _, .nil => .nil
@@ -104,7 +112,6 @@ private def coreturn' [Inhabited α] : Chunk α → α
   | .fin (xs, _) => xs
 
 variable (γ : Type u) [DecidableEq γ] [Inhabited γ] [Iterable γ ⅌]
-
 instance : Iterable (Chunk γ) ⅌ where
   push fxs y := (fun xs => Iterable.push xs y) <$> fxs
   length fxs := Iterable.length $ coreturn' fxs

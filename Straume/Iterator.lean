@@ -96,3 +96,10 @@ def fromList {α β : Type u} (xs : List β) [Inhabited α] [Iterable α β] : �
   -- if (α = (List Bit)) ∧ (β = Bit)
   -- then xs
   List.foldl (fun acc x => Iterable.push acc x) default xs
+
+class Bijection (β : Type u) (α : outParam (Type u)) where
+  comp : Type u := α
+  atom : Type u := β
+
+instance [Iterable α β] : Bijection β α where
+  comp := α
