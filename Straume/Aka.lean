@@ -92,7 +92,7 @@ instance : Coco String (String × IO.FS.Handle) where
   replace kl k := (k, Prod.snd kl)
 
 def takeN (mx : m s) (n : Nat) (b : Nat := 2048)
-          [Coco α s] [Flood m s] [Terminable f α ε] [Monad m] [Iterable α β]
+          [Coco α s] [Flood m s] [Terminable f α] [Monad m] [Iterable α β]
           : m (f α × s) := do
   -- BEST EFFORT
   let src ← mx
@@ -118,7 +118,7 @@ def takeN (mx : m s) (n : Nat) (b : Nat := 2048)
 
 private partial def takeWhileDo
   {α β : Type u} (φ : β → Bool) (mx : m s) (b : Nat) (acc : f α)
-    [Coco α s] [Iterable α β] [Terminable f α ε] [Terminable f β ε]
+    [Coco α s] [Iterable α β] [Terminable f α] [Terminable f β]
     [Aka m s f β] [Monad m] [Inhabited (m (f α × s))] [Inhabited α]
       : m (f α × s) := do
   let stream₀ ← mx
@@ -131,10 +131,10 @@ private partial def takeWhileDo
       -- cont cases.
       | (.none, .none, .none) => takeWhileDo φ (pure stream) b $ Terminable.mkCont (Iterable.push default c)
       | (.some ys, .none, .none) => takeWhileDo φ (pure stream) b $ Terminable.mkCont (Iterable.push ys c)
-      -- fin cases. We forget the error. It's a TODO.
-      | (.none, .none, .some _e) =>
+      -- fin cases.
+      | (.none, .none, .some ()) =>
         pure (Terminable.mkFin $ Iterable.push default c, stream)
-      | (.some ys, .none, .some _e) =>
+      | (.some ys, .none, .some ()) =>
         pure (Terminable.mkFin $ Iterable.push ys c, stream)
       -- nil case.
       | _otherwise => pure (acc, stream₀)
@@ -142,7 +142,7 @@ private partial def takeWhileDo
       pure (acc, stream₀)
 
 partial def takeWhile (φ : β → Bool) (mx : m s) (b : Nat := 2048)
-  [Coco α s] [Iterable α β] [Terminable f α ε] [Terminable f β ε] [Aka m s f β]
+  [Coco α s] [Iterable α β] [Terminable f α] [Terminable f β] [Aka m s f β]
   [Monad m] [Inhabited (m (f α × s))] [Inhabited α]
     : m (f α × s) := takeWhileDo φ mx b (Terminable.mkNil : f α)
 
@@ -150,7 +150,7 @@ partial def takeWhile (φ : β → Bool) (mx : m s) (b : Nat := 2048)
 -- chunkLength --
 -----------------
 
-def chunkLength (fx : f α) [Terminable f α ε] [Iterable α β] : Nat :=
+def chunkLength (fx : f α) [Terminable f α] [Iterable α β] : Nat :=
   match (Terminable.un fx) with
   | .none => 0
   | .some e => Iterable.length e

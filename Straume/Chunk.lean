@@ -73,28 +73,25 @@ instance [ToString α] : ToString (Chunk α) where
 
 export Chunk (nil cont fin)
 
-class Terminable (f : Type u → Type u) (α : Type u) (ε : outParam (Type v)) where
+-- Terminable only works with .eos, which we "model" with "Option Unit"
+class Terminable (f : Type u → Type u) (α : Type u) where
   mkNil : f α
   mkCont : α → f α
   mkFin : α → f α
-  mkFault : α → ε → f α
   un : f α → Option α
-  reason : f α → Option Terminator
+  reason : f α → Option Unit
 
-instance {α : Type u} : Terminable Chunk α IO.Error where
+instance {α : Type u} : Terminable Chunk α where
   mkNil := .nil
   mkCont := .cont
-  -- TODO: Currently there's no way to chain reason into mkFin or Fault because we can't generically switch over ε.
-  -- TODO: Move Failable away from Terimable... Solving :up: and making the typeclass working properly?..
   mkFin x := .fin (x, .eos)
-  mkFault x e := .fin (x, .ioerr e)
   un | .nil => .none
      | .cont res => .some res
      | .fin (res, _) => .some res
   reason
     | .nil => .none
     | .cont _ => .none
-    | .fin (_, e) => .some e
+    | .fin (_, _) => .some ()
 
 instance : Functor Chunk where
   map | _, .nil => .nil
