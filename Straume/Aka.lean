@@ -6,6 +6,7 @@ import Straume.MonadEmit
 open Straume.Chunk (Chunk Terminable)
 open Straume.Chunk
 open Straume.Iterator (Iterable Iterator iter)
+open Straume.MonadEmit (readStringNUnchecked)
 open Zeptoparsec
       renaming Parsec → Zepto.Parsec
 open Zeptoparsec
@@ -39,34 +40,7 @@ class Aka (m : Type u → Type v)
           (f : Type u → Type u)
           (v : Type u) where
           -- TODO: See if we can express that _buffer > 0 in types
-  take1 (_source : m s) (_buffer : Nat := 2048)
-        : m ((f v) × s)
-
-/- A way to flood a buffer of some source `s` with more data. -/
-class Flood (m : Type u → Type v)
-            (s : Type u) where
-  flood (_ctx : m s) (_buffer : Nat := 2048)
-        : m s
-
-/- Discretely-measurable stuff. -/
-class Notch (v : Type u) where
-  notch : v → Nat
-
-/- `Coco`s are `y`s that cary and allow to swap out `x`s.
-So `x`s are "contained" in `y`s.
-Sort of Flipped Coe with an additional `replace` method.
-Preventing typeclass clashes in transient dependencies in style. -/
-class Coco (x : Type u) (y : outParam (Type u)) where
-  coco : y → x
-  replace : y → x → y
-
-instance : Coco String (String × IO.FS.Handle) where
-  coco := Prod.fst
-  replace kl k := (k, Prod.snd kl)
-
-open MonadEmit (MonadEmit) in
-private def readStringNUnchecked (h : IO.FS.Handle) (n : Nat)
-                                 : IO (String × IO.FS.Handle) := MonadEmit.askFrom h n
+  take1 (_source : m s) (_buffer : Nat := 2048) : m ((f v) × s)
 
 instance : Aka IO (String × IO.FS.Handle) Chunk Char where
   take1 mxh b := do
@@ -89,11 +63,33 @@ instance : Aka IO (String × IO.FS.Handle) Chunk Char where
         | _otherwise => pure (Chunk.cont y, (x₁, h₁))
     | y :: rest => pure (Chunk.cont y, (⟨rest⟩, h))
 
+/- A way to flood a buffer of some source `s` with more data. -/
+class Flood (m : Type u → Type v)
+            (s : Type u) where
+  flood (_ctx : m s) (_buffer : Nat := 2048)
+        : m s
+
 instance : Flood IO (String × IO.FS.Handle) where
   flood mxh b := do
     let (x, h) ← mxh
     let (x₁, h₁) ← readStringNUnchecked h b
     pure (String.append x x₁, h₁)
+
+/- Discretely-measurable stuff. -/
+class Notch (v : Type u) where
+  notch : v → Nat
+
+/- `Coco`s are `y`s that carry and allow to swap out `x`s.
+So `x`s are "contained" in `y`s.
+Sort of Flipped Coe with an additional `replace` method.
+Preventing typeclass clashes in transient dependencies in style. -/
+class Coco (x : Type u) (y : outParam (Type u)) where
+  coco : y → x
+  replace : y → x → y
+
+instance : Coco String (String × IO.FS.Handle) where
+  coco := Prod.fst
+  replace kl k := (k, Prod.snd kl)
 
 def takeN (mx : m s) (n : Nat) (b : Nat := 2048)
           [Coco α s] [Flood m s] [Terminable f α ε] [Monad m] [Iterable α β]
@@ -115,6 +111,10 @@ def takeN (mx : m s) (n : Nat) (b : Nat := 2048)
       | 0 => Terminable.mkFin firstN -- We expanded to less than `n`
       | _otherwise => Terminable.mkCont firstN
   pure (res, Coco.replace srcₑ $ Iterable.extract it₁ { it₁ with i := k })
+
+---------------
+-- takeWhile --
+---------------
 
 private partial def takeWhileDo
   {α β : Type u} (φ : β → Bool) (mx : m s) (b : Nat) (acc : f α)
@@ -141,10 +141,14 @@ private partial def takeWhileDo
     else
       pure (acc, stream₀)
 
-partial def takeWhile (φ : β → Bool) (mx : m s) (b := 2048)
+partial def takeWhile (φ : β → Bool) (mx : m s) (b : Nat := 2048)
   [Coco α s] [Iterable α β] [Terminable f α ε] [Terminable f β ε] [Aka m s f β]
   [Monad m] [Inhabited (m (f α × s))] [Inhabited α]
     : m (f α × s) := takeWhileDo φ mx b (Terminable.mkNil : f α)
+
+-----------------
+-- chunkLength --
+-----------------
 
 def chunkLength (fx : f α) [Terminable f α ε] [Iterable α β] : Nat :=
   match (Terminable.un fx) with

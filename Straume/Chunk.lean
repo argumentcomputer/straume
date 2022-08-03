@@ -63,13 +63,13 @@ inductive Chunk (α : Type u) where
 | nil
 | cont : α → Chunk α
 | fin : α × Terminator → Chunk α
-deriving Repr
+deriving Inhabited, Repr
 
 instance [ToString α] : ToString (Chunk α) where
-  toString x := match x with
-  | .nil => "Chunk.nil"
-  | .cont y => s!"Chunk.cont \"{y}\""
-  | .fin (y, t) => s!"Chunk.fin (\"{y}\", {t})"
+  toString
+    | .nil => "Chunk.nil"
+    | .cont y => s!"Chunk.cont \"{y}\""
+    | .fin (y, t) => s!"Chunk.fin (\"{y}\", {t})"
 
 export Chunk (nil cont fin)
 
@@ -86,46 +86,38 @@ instance {α : Type u} : Terminable Chunk α IO.Error where
   mkCont := .cont
   -- TODO: Currently there's no way to chain reason into mkFin or Fault because we can't generically switch over ε.
   -- TODO: Move Failable away from Terimable... Solving :up: and making the typeclass working properly?..
-  mkFin (x : α) := .fin (x, .eos)
-  mkFault (x : α) (e : IO.Error) := .fin (x, .ioerr e)
-  un (x : Chunk α) := match x with
-  | .nil => .none
-  | .cont res => .some res
-  | .fin (res, _) => .some res
-  reason (x : Chunk α) := match x with
-  | .nil => .none
-  | .cont _ => .none
-  | .fin (_, e) => .some e
+  mkFin x := .fin (x, .eos)
+  mkFault x e := .fin (x, .ioerr e)
+  un | .nil => .none
+     | .cont res => .some res
+     | .fin (res, _) => .some res
+  reason
+    | .nil => .none
+    | .cont _ => .none
+    | .fin (_, e) => .some e
 
 instance : Functor Chunk where
-  map f fxs := match fxs with
-    | .nil => .nil
-    | .cont xs => .cont $ f xs
-    | .fin (xs, terminator) => .fin (f xs, terminator)
+  map | _, .nil => .nil
+      | f, .cont xs => .cont $ f xs
+      | f, .fin (xs, terminator) => .fin (f xs, terminator)
 
-instance : Inhabited (Chunk α) where
-  default := .nil
+private def coreturn' [Inhabited α] : Chunk α → α
+  | .nil => default
+  | .cont xs => xs
+  | .fin (xs, _) => xs
 
-private def coreturn' (fxs : Chunk α) [Inhabited α] : α :=
-  match fxs with
-    | .nil => default
-    | .cont xs => xs
-    | .fin (xs, _) => xs
-
-variable (γ : Type u) [BEq γ] [Inhabited γ] [Iterable γ ⅌]
+variable (γ : Type u) [DecidableEq γ] [Inhabited γ] [Iterable γ ⅌]
 
 instance : Iterable (Chunk γ) ⅌ where
   push fxs y := (fun xs => Iterable.push xs y) <$> fxs
   length fxs := Iterable.length $ coreturn' fxs
-  hasNext it := Iterable.hasNext $ Iterator.mk (coreturn' it.s) (it.i)
+  hasNext it := Iterable.hasNext {it with s := coreturn' it.s}
   next it :=
-    Iterator.mk it.s (Iterable.next $ Iterator.mk (coreturn' it.s) (it.i)).i
+    let itᵢ := Iterable.next {it with s := coreturn' it.s}
+    { it with i := itᵢ.i }
   extract it₁ it₂ :=
-    let g := Iterator.extract (Iterator.mk (coreturn' it₁.s) (it₁.i))
-                              (Iterator.mk (coreturn' it₂.s) (it₂.i))
+    let g := Iterable.extract {it₁ with s := coreturn' it₁.s}
+                              {it₂ with s := coreturn' it₂.s}
     -- TODO: is this correct?
-    if g == default then
-      .nil
-    else
-      (const g) <$> it₁.s
-  curr it := Iterator.curr (Iterator.mk (coreturn' it.s) (it.i))
+    if g = default then .nil else (const g) <$> it₁.s
+  curr it := Iterable.curr {it with s := coreturn' it.s}
