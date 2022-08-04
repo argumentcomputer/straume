@@ -107,6 +107,8 @@ partial def takeWhile (φ : β → Bool) (src : s) (b : Nat := 2048)
   [Inhabited (m (f α × s))] [Inhabited α] [Flood m s]
     : m (f α × s) := takeWhileDo φ src b Terminable.mkNil
 
+open Straume.Combinators
+#check λs => Straume.Aka.takeWhile (const true) s 2048
 -------------------------------
 ----      chunkLength      ----
 -------------------------------
