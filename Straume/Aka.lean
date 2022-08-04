@@ -8,6 +8,7 @@ open Straume.Chunk (Chunk Terminable)
 open Straume.Coco (Coco)
 open Straume.Flood (Flood)
 open Straume.Iterator (Iterable iter)
+open Straume.Iterator (Bijection)
 open Zeptoparsec renaming Parsec → Zepto.Parsec
 open Zeptoparsec renaming ParseResult → Zepto.Res
 
@@ -61,6 +62,19 @@ def takeN {f : Type u → Type u} {α β : Type u}
   pure (res, Coco.replace srcₑ $ Iterable.extract it₁ { it₁ with i := k })
 
 -------------------------------
+----         take1         ----
+-------------------------------
+
+-- We use `takeN` to snip off `α` of length 1 and then use
+-- `Iterable` to take the first (and only) element.
+def take1 {f : Type u → Type u} {α β : Type u}
+          (mx : m s) (b := 2048)
+          [Coco α s] [Flood m s] [Terminable f] [Monad m]
+          [Iterable α β] [Bijection β α] : m ((f β) × s) :=
+  takeN mx 1 b >>= fun ((y : f α), s₁) =>
+    pure ((Iterable.curr ∘ iter) <$> y, s₁)
+
+-------------------------------
 ----      chunkLength      ----
 -------------------------------
 
@@ -86,3 +100,6 @@ class Aka (m : Type u → Type v)
           (v : Type u) where
                         -- TODO: Can we express _buffer > 0 in types?
   take1 (_source : m s) (_buffer : Nat := 2048) : m ((f v) × s)
+
+instance : Aka IO (String × IO.FS.Handle) Chunk Char where
+  take1 mx b := take1 mx b

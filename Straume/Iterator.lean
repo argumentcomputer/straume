@@ -93,3 +93,11 @@ def fromList {α β : Type u} (xs : List β) [Inhabited α] [Iterable α β] : �
   -- if (α = (List Bit)) ∧ (β = Bit)
   -- then xs
   List.foldl (fun acc x => Iterable.push acc x) default xs
+
+
+-- We define an empty class here to show Lean that the functional
+-- dependency that Iterable uses also works in the other direction,
+-- i.e. `Char` can only be gotten by iterating over `String`s.
+class Bijection (β : Type u) (α : outParam (Type u))
+
+instance [Iterable α β] : Bijection β α := {}
