@@ -4,7 +4,7 @@ import Straume.Flood
 import Straume.Iterator
 import Straume.Zeptoparsec
 
-open Straume.Chunk (Chunk Terminable)
+open Straume.Chunk (Chunk Terminable coreturn)
 open Straume.Coco (Coco)
 open Straume.Flood (Flood)
 open Straume.Iterator (Iterable iter)
@@ -73,6 +73,41 @@ def take1 {f : Type u → Type u} {α β : Type u}
           [Iterable α β] [Bijection β α] : m ((f β) × s) :=
   takeN mx 1 b >>= fun ((y : f α), s₁) =>
     pure ((Iterable.curr ∘ iter) <$> y, s₁)
+
+
+-------------------------------
+----       takeWhile       ----
+-------------------------------
+
+private partial def takeWhileDo
+    {f : Type u → Type u} {α β : Type u}
+    (φ : β → Bool) (mx : m s) (b : Nat) (acc : f α)
+    [Coco α s] [Iterable α β] [Terminable f] [Monad m]
+    [Inhabited (m (f α × s))] [Inhabited α] [Flood m s]
+    : m (f α × s) := do
+  let stream₀ ← mx
+  let ((atom : f β), stream) ← take1 mx b
+  match Terminable.un atom with
+  | .none => pure (acc, stream₀)
+  | .some c =>
+    if φ c then
+      match (Terminable.reason acc, Terminable.reason atom) with
+      -- cont cases
+      | (.none, .none) =>
+        takeWhileDo φ (pure stream) b $
+          Terminable.mkCont $ Iterable.push (coreturn acc) c
+      -- fin cases
+      | (.none, .some ()) =>
+        pure (Terminable.mkFin $ coreturn acc, stream)
+      -- nil case
+      | _otherwise => pure (acc, stream₀)
+    else
+      pure (acc, stream₀)
+
+partial def takeWhile (φ : β → Bool) (mx : m s) (b : Nat := 2048)
+  [Coco α s] [Iterable α β] [Terminable f] [Monad m]
+  [Inhabited (m (f α × s))] [Inhabited α] [Flood m s]
+    : m (f α × s) := takeWhileDo φ mx b Terminable.mkNil
 
 -------------------------------
 ----      chunkLength      ----
