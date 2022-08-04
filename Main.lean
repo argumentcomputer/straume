@@ -1,7 +1,7 @@
 import Straume
 
 open Straume.Chunk in
-open Straume.Aka in
+open Straume in
 
 def main : IO Unit := do
   IO.println "STREAM DEMO 9000! NOW WORKING!"
@@ -13,12 +13,12 @@ def main : IO Unit := do
   IO.println s!"{String.fromUTF8Unchecked zoink}\n"
 
   IO.println "Nice! How does that sentence end? Let's find out, with CHUNKS!\n"
-  let ((zoink1 : Chunk String), (buff₁, h₁)) ← takeN ("", h₀) 80 200
+  let ((zoink1 : Chunk String), (buff₁, h₁)) ← takeN 80 ("", h₀) 200
   IO.println s!"CHUNK IS {zoink1}"
   IO.println s!"BUFFER IS {buff₁}"
 
   IO.println "\nOh, it's a classic. Let's read the whole Chapter 1!\n"
-  let ((zoink2 : Chunk String), (buff₂, _)) ← takeN ("", h₁) 80000
+  let ((zoink2 : Chunk String), (buff₂, _)) ← takeN 80000 ("", h₁)
   IO.println s!"CHUNK IS {zoink2}"
   IO.println s!"BUFFER IS {if buff₂ == "" then "EMPTY" else buff₂}"
 
@@ -27,4 +27,4 @@ def main : IO Unit := do
     (fun handle => takeWhile (fun c => c != '.') ("", handle))
 
   IO.println s!"CHUNK IS {zoink3}"
-  IO.println s!"BTW, CHUNK'S SIZE IS {chunkLength zoink3}"
+  IO.println s!"BTW, CHUNK'S SIZE IS {Aka.chunkLength zoink3}"
