@@ -78,9 +78,6 @@ instance : Functor Chunk where
       | f, .cont xs => .cont $ f xs
       | f, .fin (xs, terminator) => .fin (f xs, terminator)
 
-instance : Inhabited (Chunk α) where
-  default := .nil
-
 -------------------------------
 ----       Terminable      ----
 -------------------------------

@@ -6,28 +6,53 @@ open LSpec
 open Straume.Iterator
 open Bit
 
-def srcStr : Iterator String := iter "This is a test string of 39 characters."
-def srcBits : Iterator (List Bit) := iter $ pad 10 $ natToBits 43
+def str : Iterator String := iter "This is a test string of 39 characters."
+def bits : Iterator (List Bit) := iter $ pad 10 $ natToBits 43
 def emptyBA : Iterator ByteArray := iter default
 
-def extractTest :=
-  test "Extracting 0↔0: empty" (extract srcStr srcStr = default) $
-  test "Extracting 0↔4: four symbols"
-    (extract srcStr { srcStr with i := 4 } = "This") $
-  test "Extracting 4↔8: four symbols"
-    (extract { srcStr with i := 4 } { srcStr with i := 8 } = " is ") $
-  test "Extracting 0↔n, n > size: returns the whole string" $
-    extract srcStr {srcStr with i := 100} = srcStr.s
+-- A helper function to turn any `Iterator` to `List` and back again,
+-- allowing to do some manipulation on that `List` on the way.
+private def lrt
+  (s : α) (f : List β → List β) [Iterable α β] [Inhabited α] : α :=
+    fromList $ f $ toList s
 
-def forwardTest :=
-  test "No forwards past the edge" (curr (forward srcStr 100) = '.') $
-  test "Manual going past the edge returns last char" $
-    curr ({ srcStr with i := 100 }) = '.'
+def listsTest :=
+  let rtstr := "There and back again"
+  test "toList/fromList roundtrip on strings" (fromList (toList rtstr) = rtstr)
 
-def currTest :=
-  test "Current elem of empty iterator = default" $ curr emptyBA = default
+def extractTest
+  (tdesc : String) (it : Iterator α)
+    [Iterable α β] [Inhabited α] [DecidableEq α] : TestSeq :=
+  test (tdesc ++ ", extracting 0↔0: empty") (extract it it = default) $
+  test (tdesc ++ ", extracting 0↔4: four symbols")
+    (extract it { it with i := 4 } = lrt it.s (List.take 4)) $
+  test (tdesc ++ ", extracting 4↔8: four symbols")
+    (extract { it with i := 4 } { it with i := 8 } =
+      lrt it.s (List.take 4 ∘ List.drop 4)) $
+  test (tdesc ++ ", extracting 0↔n, n > size: returns the whole string") $
+    extract it {it with i := 100} = it.s
+
+def forwardTest
+  (tdesc : String) (it : Iterator α) [Iterable α β]
+    [DecidableEq α] [DecidableEq β] [Inhabited α] [Inhabited β] : TestSeq :=
+  let last := if it.s = default then default else (toList it.s).getLast!
+  test (tdesc ++ ", no forwards past the edge")
+    (curr (forward it 100) = last) $
+  test (tdesc ++ ", manual going past the edge returns last char") $
+    curr ({ it with i := 100 }) = last
+
+def emptyTest
+  (tdesc : String) (it : Iterator α)
+    [Iterable α β] [DecidableEq β] [Inhabited β] : TestSeq :=
+  test (tdesc ++ ", current elem of empty iterator = default") $
+    curr it = default
 
 def main := lspecIO $
-  extractTest ++
-  forwardTest ++
-  currTest
+  listsTest ++
+  extractTest "String" str ++
+  extractTest "List Bit" bits ++
+  forwardTest "String" str ++
+  forwardTest "List Bit" str ++
+  emptyTest "String" (iter "") ++
+  emptyTest "List Bit" ((iter []) : Iterator (List Bit)) ++
+  emptyTest "ByteArray" emptyBA
