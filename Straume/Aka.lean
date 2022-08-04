@@ -1,9 +1,13 @@
 import Straume.Chunk
+import Straume.Coco
+import Straume.Flood
 import Straume.Iterator
 import Straume.Zeptoparsec
 
 open Straume.Chunk (Chunk Terminable)
-open Straume.Iterator (Iterable)
+open Straume.Coco (Coco)
+open Straume.Flood (Flood)
+open Straume.Iterator (Iterable iter)
 open Zeptoparsec renaming Parsec → Zepto.Parsec
 open Zeptoparsec renaming ParseResult → Zepto.Res
 
@@ -29,6 +33,32 @@ universe v
 --   take1 : S → Option (Token × S)
 --   takeN : Nat → S → Option (Chunk \a × S)
 --   takeWhile : (Token → Bool) → S → (Chunk \a × S)
+
+-------------------------------
+----         takeN         ----
+-------------------------------
+
+def takeN {f : Type u → Type u} {α β : Type u}
+          (mx : m s) (n : Nat) (b : Nat := 2048)
+          [Coco α s] [Flood m s] [Terminable f] [Monad m] [Iterable α β]
+          : m (f α × s) := do
+  -- BEST EFFORT
+  let src ← mx
+  let l := Iterable.length (Coco.coco src : α)
+  let srcₑ ← Flood.flood mx $ max b ((n - l) + 1) -- We expand the buffer
+  -- EXTRACTION
+  let it₀ := iter $ Coco.coco srcₑ
+  let it₁ := { it₀ with i := n }
+  let firstN := Iterable.extract it₀ it₁
+  -- CHUNK PREPARATION
+  let k := Iterable.length $ it₀.s
+  let res :=
+    if k == 0 && l == 0
+    then Terminable.mkNil -- Expansion unsuccessful => Stream was always empty
+    else match k - n with
+      | 0 => Terminable.mkFin firstN -- We expanded to less than `n`
+      | _otherwise => Terminable.mkCont firstN
+  pure (res, Coco.replace srcₑ $ Iterable.extract it₁ { it₁ with i := k })
 
 -------------------------------
 ----      chunkLength      ----
