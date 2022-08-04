@@ -13,7 +13,10 @@ def main : IO Unit := do
   IO.println s!"{String.fromUTF8Unchecked zoink}\n"
 
   IO.println "Nice! How does that sentence end? Let's find out, with CHUNKS!\n"
-  let ((zoink1 : Chunk String), (buff₁, h₁)) ← takeN 80 ("", h₀) 200
+  let (
+    (zoink1 : Chunk String),
+    (buff₁, h₁)
+  ) ← takeN 80 ("", h₀) 200
   IO.println s!"CHUNK IS {zoink1}"
   IO.println s!"BUFFER IS {buff₁}"
 
@@ -27,4 +30,4 @@ def main : IO Unit := do
     (fun handle => takeWhile (fun c => c != '.') ("", handle))
 
   IO.println s!"CHUNK IS {zoink3}"
-  IO.println s!"BTW, CHUNK'S SIZE IS {chunkLength zoink3}"
+  IO.println s!"BTW, CHUNK'S SIZE IS {Aka.chunkLength zoink3}"

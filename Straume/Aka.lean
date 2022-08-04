@@ -112,6 +112,7 @@ partial def takeWhile
 
 open Straume.Combinators
 #check λs => Straume.Aka.takeWhile (const true) s 2048
+
 -------------------------------
 ----      chunkLength      ----
 -------------------------------
@@ -120,6 +121,9 @@ def chunkLength (fx : f α) [Terminable f] [Iterable α β] : Nat :=
   match (Terminable.un fx) with
   | .none => 0
   | .some e => Iterable.length e
+
+def storeLength (fx : f α) [Terminable f] [Iterable α β] : f Nat :=
+  Iterable.length <$> fx
 
 -------------------------------
 ----       Aka class       ----
