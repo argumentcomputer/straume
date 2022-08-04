@@ -30,6 +30,9 @@ structure Iterator (α : Type u) where
 def iter (s : α) : Iterator α :=
   ⟨s, 0⟩
 
+instance : Functor Iterator where
+  map | f, ⟨s, i⟩ => ⟨f s, i⟩
+
 class Iterable (α : Type u) (β : outParam (Type u)) where
   push : α → β → α
   length : α → Nat
@@ -64,11 +67,10 @@ instance : Iterable ByteArray UInt8 where
     | ⟨s₁, b⟩, ⟨s₂, e⟩ =>
       if s₁ ≠ s₂ || b > e then default
       else s₁.extract b e
-  curr | ⟨s, i⟩ => let ts := ByteArray.toList s
+  curr | ⟨s, i⟩ => let i' := if i < s.size then i else s.size - 1
       -- pos shouldn't increase if ¬s.hasNext, but it's possible to construct
       -- such an iterator manually, so we have to return the last byte.
-    let i' := if i < s.size then i else s.size - 1
-    ts.get! i'
+    s.get! i'
 
 instance : Iterable (List Bit) Bit where
   push := List.concat
@@ -88,12 +90,17 @@ def forward [Iterable α β] : Iterator α → Nat → Iterator α
   | it, 0   => it
   | it, n+1 => forward (next it) n
 
-def fromList {α β : Type u} (xs : List β) [Inhabited α] [Iterable α β] : α :=
+def fromList (xs : List β) [Inhabited α] [Iterable α β] : α :=
   -- TODO: Consider adding fromList to Iterable?..
   -- if (α = (List Bit)) ∧ (β = Bit)
   -- then xs
-  List.foldl (fun acc x => Iterable.push acc x) default xs
+  List.foldl (fun acc x => push acc x) default xs
 
+private partial def toList' (it : Iterator α) [Iterable α β] : List β :=
+  if hasNext it then curr it :: toList' (next it) else [curr it]
+
+def toList (src : α) [Iterable α β] : List β :=
+  if length src = 0 then [] else toList' $ iter src
 
 -- We define an empty class here to show Lean that the functional
 -- dependency that Iterable uses also works in the other direction,
