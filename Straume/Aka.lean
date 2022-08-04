@@ -40,13 +40,12 @@ universe v
 -------------------------------
 
 def takeN {f : Type u → Type u} {α β : Type u}
-          (mx : m s) (n : Nat) (b : Nat := 2048)
+          (src : s) (n : Nat) (b : Nat := 2048)
           [Coco α s] [Flood m s] [Terminable f] [Monad m] [Iterable α β]
           : m (f α × s) := do
   -- BEST EFFORT
-  let src ← mx
   let l := Iterable.length (Coco.coco src : α)
-  let srcₑ ← Flood.flood mx $ max b ((n - l) + 1) -- We expand the buffer
+  let srcₑ ← Flood.flood src $ max b ((n - l) + 1) -- We expand the buffer
   -- EXTRACTION
   let it₀ := iter $ Coco.coco srcₑ
   let it₁ := { it₀ with i := n }
@@ -68,10 +67,10 @@ def takeN {f : Type u → Type u} {α β : Type u}
 -- We use `takeN` to snip off `α` of length 1 and then use
 -- `Iterable` to take the first (and only) element.
 def take1 {f : Type u → Type u} {α β : Type u}
-          (mx : m s) (b := 2048)
+          (src : s) (b := 2048)
           [Coco α s] [Flood m s] [Terminable f] [Monad m]
           [Iterable α β] [Bijection β α] : m ((f β) × s) :=
-  takeN mx 1 b >>= fun ((y : f α), s₁) =>
+  takeN src 1 b >>= fun ((y : f α), s₁) =>
     pure ((Iterable.curr ∘ iter) <$> y, s₁)
 
 
@@ -81,12 +80,11 @@ def take1 {f : Type u → Type u} {α β : Type u}
 
 private partial def takeWhileDo
     {f : Type u → Type u} {α β : Type u}
-    (φ : β → Bool) (mx : m s) (b : Nat) (acc : f α)
+    (φ : β → Bool) (stream₀ : s) (b : Nat) (acc : f α)
     [Coco α s] [Iterable α β] [Terminable f] [Monad m]
     [Inhabited (m (f α × s))] [Inhabited α] [Flood m s]
     : m (f α × s) := do
-  let stream₀ ← mx
-  let ((atom : f β), stream) ← take1 mx b
+  let ((atom : f β), stream) ← take1 stream₀ b
   match Terminable.un atom with
   | .none => pure (acc, stream₀)
   | .some c =>
@@ -94,7 +92,7 @@ private partial def takeWhileDo
       match (Terminable.reason acc, Terminable.reason atom) with
       -- cont cases
       | (.none, .none) =>
-        takeWhileDo φ (pure stream) b $
+        takeWhileDo φ stream b $
           Terminable.mkCont $ Iterable.push (coreturn acc) c
       -- fin cases
       | (.none, .some ()) =>
@@ -104,10 +102,10 @@ private partial def takeWhileDo
     else
       pure (acc, stream₀)
 
-partial def takeWhile (φ : β → Bool) (mx : m s) (b : Nat := 2048)
+partial def takeWhile (φ : β → Bool) (src : s) (b : Nat := 2048)
   [Coco α s] [Iterable α β] [Terminable f] [Monad m]
   [Inhabited (m (f α × s))] [Inhabited α] [Flood m s]
-    : m (f α × s) := takeWhileDo φ mx b Terminable.mkNil
+    : m (f α × s) := takeWhileDo φ src b Terminable.mkNil
 
 -------------------------------
 ----      chunkLength      ----
@@ -134,7 +132,7 @@ class Aka (m : Type u → Type v)
           (f : Type u → Type u)
           (v : Type u) where
                         -- TODO: Can we express _buffer > 0 in types?
-  take1 (_source : m s) (_buffer : Nat := 2048) : m ((f v) × s)
+  take1 (_source : s) (_buffer : Nat := 2048) : m ((f v) × s)
 
 instance : Aka IO (String × IO.FS.Handle) Chunk Char where
-  take1 mx b := take1 mx b
+  take1 src b := take1 src b
