@@ -12,4 +12,5 @@ lean_exe straume {
   root := "Main"
 }
 
+lean_exe Tests.Iterator
 lean_exe Tests.Zeptoparsec

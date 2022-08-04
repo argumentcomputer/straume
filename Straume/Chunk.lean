@@ -20,9 +20,18 @@ A way to terminate a stream.
 TODO: do we want to let the user control max chunk size and error out if it's too big?
 -/
 inductive Terminator where
-| eos
-| timeout
-| ioerr : IO.Error → Terminator
+  | eos
+  | timeout
+  | ioerr : IO.Error → Terminator
+
+instance : ToString Terminator where
+  toString x := match x with
+  | .eos => "Terminator.eos"
+  | .timeout => "Terminator.timeout"
+  | .ioerr _e => "Terminator.⟪system error⟫"
+
+instance : Repr Terminator where
+  reprPrec x _n := ToString.toString x
 
 /-
 Suppose we have a variable length binary protocol such that the message length
@@ -51,41 +60,78 @@ Chunks are
 I hope it's clear. 🙇
 -/
 inductive Chunk (α : Type u) where
-| nil
-| cont : α → Chunk α
-| fin : α × Terminator → Chunk α
+  | nil
+  | cont : α → Chunk α
+  | fin : α × Terminator → Chunk α
+  deriving Inhabited, Repr
 
 export Chunk (nil cont fin)
 
+instance [ToString α] : ToString (Chunk α) where
+  toString
+    | .nil => "Chunk.nil"
+    | .cont y => s!"Chunk.cont \"{y}\""
+    | .fin (y, t) => s!"Chunk.fin (\"{y}\", {t})"
+
 instance : Functor Chunk where
-  map f fxs := match fxs with
-    | .nil => .nil
-    | .cont xs => .cont $ f xs
-    | .fin (xs, terminator) => .fin (f xs, terminator)
+  map | _, .nil => .nil
+      | f, .cont xs => .cont $ f xs
+      | f, .fin (xs, terminator) => .fin (f xs, terminator)
 
 instance : Inhabited (Chunk α) where
   default := .nil
 
-private def coreturn' (fxs : Chunk α) [Inhabited α] : α :=
-  match fxs with
-    | .nil => default
-    | .cont xs => xs
-    | .fin (xs, _) => xs
+-------------------------------
+----       Terminable      ----
+-------------------------------
 
-variable (γ : Type u) [BEq γ] [Inhabited γ] [Iterable γ ⅌]
+-- `Terminable` only works with `.eos`, which we "model" with `Option Unit`
+-- `Terminable` models info about finality tacked onto values.
+class Terminable (f : Type u → Type u) where
+  mkNil : f α
+  mkCont : α → f α
+  mkFin : α → f α
+  un : f α → Option α
+  reason : f α → Option Unit
 
-instance : Iterable (Chunk γ) ⅌ where
+instance : Terminable Chunk where
+  mkNil := .nil
+  mkCont := .cont
+  mkFin x := .fin (x, .eos)
+  un | .nil => .none
+     | .cont res => .some res
+     | .fin (res, _) => .some res
+  reason
+    | .nil => .none
+    | .cont _ => .none
+    | .fin _ => .some ()
+
+export Terminable (mkNil mkCont mkFin)
+
+def coreturn [Inhabited α] [Terminable f] (fxs : f α) : α :=
+  (Terminable.un fxs).getD default
+
+instance [Terminable f] : Inhabited (f α) where
+  default := mkNil
+
+instance [Terminable f] : Functor f where
+  map φ fa :=
+    match (Terminable.un fa, Terminable.reason fa) with
+    | (.some y, .none) => mkCont $ φ y
+    | (.some y, .some ()) => mkFin $ φ y
+    | _otherwise => mkNil
+
+instance [Iterable α β] [Terminable f] [Inhabited α] [BEq α]
+    : Iterable (f α) β where
   push fxs y := (fun xs => Iterable.push xs y) <$> fxs
-  length fxs := Iterable.length $ coreturn' fxs
-  hasNext it := Iterable.hasNext $ Iterator.mk (coreturn' it.s) (it.i)
+  length fxs := Iterable.length $ coreturn fxs
+  hasNext it := Iterable.hasNext {it with s := coreturn it.s}
   next it :=
-    Iterator.mk it.s (Iterable.next $ Iterator.mk (coreturn' it.s) (it.i)).i
+    let itᵢ := Iterable.next {it with s := coreturn it.s}
+    { it with i := itᵢ.i }
   extract it₁ it₂ :=
-    let g := Iterator.extract (Iterator.mk (coreturn' it₁.s) (it₁.i))
-                              (Iterator.mk (coreturn' it₂.s) (it₂.i))
+    let g := Iterable.extract {it₁ with s := coreturn it₁.s}
+                              {it₂ with s := coreturn it₂.s}
     -- TODO: is this correct?
-    if g == default then
-      .nil
-    else
-      (const g) <$> it₁.s
-  curr it := Iterator.curr (Iterator.mk (coreturn' it.s) (it.i))
+     if g == default then mkNil else (const g) <$> it₁.s
+  curr it := Iterable.curr {it with s := coreturn it.s}
