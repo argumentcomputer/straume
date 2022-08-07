@@ -40,7 +40,7 @@ universe v
 -------------------------------
 
 def takeN {f : Type u → Type u} {α β : Type u}
-          (src : s) (n : Nat) (b : Nat := 2048)
+          (n : Nat) (src : s) (b : Nat := 2048)
           [Coco α s] [Flood m s] [Terminable f] [Monad m] [Iterable α β]
           : m (f α × s) := do
   -- BEST EFFORT
@@ -70,7 +70,7 @@ def take1 {f : Type u → Type u} {α β : Type u}
           (src : s) (b := 2048)
           [Coco α s] [Flood m s] [Terminable f] [Monad m]
           [Iterable α β] [Bijection β α] : m ((f β) × s) :=
-  takeN src 1 b >>= fun ((y : f α), s₁) =>
+  takeN 1 src b >>= fun ((y : f α), s₁) =>
     pure ((Iterable.curr ∘ iter) <$> y, s₁)
 
 
@@ -102,10 +102,16 @@ private partial def takeWhileDo
     else
       pure (acc, stream₀)
 
-partial def takeWhile (φ : β → Bool) (src : s) (b : Nat := 2048)
-  [Coco α s] [Iterable α β] [Terminable f] [Monad m]
-  [Inhabited (m (f α × s))] [Inhabited α] [Flood m s]
-    : m (f α × s) := takeWhileDo φ src b Terminable.mkNil
+partial def takeWhile
+    {f : Type u → Type u} {α β : Type u}
+    (φ : β → Bool) (src : s) (b : Nat := 2048)
+    [Coco α s] [Iterable α β] [Terminable f] [Monad m]
+    [Inhabited (m (f α × s))] [Inhabited α] [Flood m s]
+    : m (f α × s) :=
+  takeWhileDo φ src b Terminable.mkNil
+
+open Straume.Combinators
+#check λs => Straume.Aka.takeWhile (const true) s 2048
 
 -------------------------------
 ----      chunkLength      ----
@@ -115,6 +121,9 @@ def chunkLength (fx : f α) [Terminable f] [Iterable α β] : Nat :=
   match (Terminable.un fx) with
   | .none => 0
   | .some e => Iterable.length e
+
+def storeLength (fx : f α) [Terminable f] [Iterable α β] : f Nat :=
+  Iterable.length <$> fx
 
 -------------------------------
 ----       Aka class       ----
