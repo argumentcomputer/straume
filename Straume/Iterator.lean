@@ -46,8 +46,8 @@ export Iterable (push length hasNext next extract curr)
 instance : Iterable String Char where
   push := String.push
   length s := s.length
-  hasNext | ⟨s, i⟩ => i < s.endPos.byteIdx - 1
-  next | ⟨s, i⟩ => if i < s.endPos.byteIdx - 1
+  hasNext | ⟨s, i⟩ => i < s.endPos.byteIdx
+  next | ⟨s, i⟩ => if i < s.endPos.byteIdx
     then ⟨s, (s.next ⟨i⟩).byteIdx⟩
     else ⟨s, i⟩
   extract
@@ -61,8 +61,8 @@ instance : Iterable String Char where
 instance : Iterable ByteArray UInt8 where
   push := ByteArray.push
   length s := s.size
-  hasNext | ⟨s, i⟩ => i < s.size - 1
-  next | ⟨s, i⟩ => if i < s.size - 1 then ⟨s, i+1⟩ else ⟨s, i⟩
+  hasNext | ⟨s, i⟩ => i < s.size
+  next | ⟨s, i⟩ => if i < s.size then ⟨s, i+1⟩ else ⟨s, i⟩
   extract
     | ⟨s₁, b⟩, ⟨s₂, e⟩ =>
       if s₁ ≠ s₂ || b > e then default
@@ -75,8 +75,8 @@ instance : Iterable ByteArray UInt8 where
 instance : Iterable (List Bit) Bit where
   push := List.concat
   length s := s.length
-  hasNext | ⟨s, i⟩ => i < s.length - 1
-  next | ⟨s, i⟩ => if i < s.length - 1 then ⟨s, i+1⟩ else ⟨s, i⟩
+  hasNext | ⟨s, i⟩ => i < s.length
+  next | ⟨s, i⟩ => if i < s.length then ⟨s, i+1⟩ else ⟨s, i⟩
   extract
     | ⟨s₁, b⟩, ⟨s₂, e⟩ =>
       if s₁ ≠ s₂ then default
@@ -97,10 +97,9 @@ def fromList (xs : List β) [Inhabited α] [Iterable α β] : α :=
   List.foldl (fun acc x => push acc x) default xs
 
 private partial def toList' (it : Iterator α) [Iterable α β] : List β :=
-  if hasNext it then curr it :: toList' (next it) else [curr it]
+  if hasNext it then curr it :: toList' (next it) else []
 
-def toList (src : α) [Iterable α β] : List β :=
-  if length src = 0 then [] else toList' $ iter src
+def toList (src : α) [Iterable α β] : List β := toList' $ iter src
 
 -- We define an empty class here to show Lean that the functional
 -- dependency that Iterable uses also works in the other direction,

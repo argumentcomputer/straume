@@ -18,7 +18,11 @@ private def lrt
 
 def listsTest :=
   let rtstr := "There and back again"
-  test "toList/fromList roundtrip on strings" (fromList (toList rtstr) = rtstr)
+  let rtba := List.toByteArray [42, 10, 3]
+  let rtbits := natToBits 10
+  test "toList/fromList roundtrip, strings" (fromList (toList rtstr) = rtstr) $
+  test "toList/fromList roundtrip, strings" (fromList (toList rtba) = rtba) $
+  test "toList/fromList roundtrip, strings" (fromList (toList rtbits) = rtbits)
 
 def extractTest
   (tdesc : String) (it : Iterator α)
@@ -41,18 +45,31 @@ def forwardTest
   test (tdesc ++ ", manual going past the edge returns last char") $
     curr ({ it with i := 100 }) = last
 
+def singletonTest
+  (tdesc : String) (it : Iterator α)
+    [Iterable α β] [DecidableEq β] [Inhabited β] : TestSeq :=
+  test (tdesc ++ ", hasNext when only one element") $ hasNext it
+
 def emptyTest
   (tdesc : String) (it : Iterator α)
     [Iterable α β] [DecidableEq β] [Inhabited β] : TestSeq :=
+  test (tdesc ++ ", no hasNext on empty iterator") (hasNext it = false) $
   test (tdesc ++ ", current elem of empty iterator = default") $
     curr it = default
 
 def main := lspecIO $
   listsTest ++
+
   extractTest "String" str ++
   extractTest "List Bit" bits ++
+
   forwardTest "String" str ++
   forwardTest "List Bit" str ++
+
+  singletonTest "String" (iter ".") ++
+  singletonTest "List Bit" (iter [one]) ++
+  singletonTest "ByteArray" (iter $ List.toByteArray [42]) ++
+
   emptyTest "String" (iter "") ++
   emptyTest "List Bit" ((iter []) : Iterator (List Bit)) ++
   emptyTest "ByteArray" emptyBA
