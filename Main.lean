@@ -2,6 +2,8 @@ import Straume
 
 open Straume.Chunk in
 open Straume in
+open Zeptoparsec in
+open Straume.Iterator in
 
 def main : IO Unit := do
   IO.println "STREAM DEMO 9000! NOW WORKING!"
@@ -28,3 +30,20 @@ def main : IO Unit := do
 
   IO.println s!"CHUNK IS {zoink3}"
   IO.println s!"BTW, CHUNK'S SIZE IS {Aka.chunkLength zoink3}"
+
+  -- Example of subsequent Zeptoparsec usage
+
+  let sentencesP := attempt $ do
+    let body ← manyChars (satisfy (fun c => c != '.'))
+    _ ← pchar '.' *> optionalP ws
+    pure $ body ++ "."
+
+  let sentences :=
+    match (Zeptoparsec.run (many sentencesP) $ coreturn zoink2) with
+    | Except.ok res => res
+    | Except.error _ => default
+
+  let small := List.filter (fun s => s.length < 50) $ sentences.toList
+
+  IO.println small.length
+  IO.println small
