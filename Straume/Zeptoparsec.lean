@@ -33,6 +33,11 @@ def Parsec (σ α : Type u) : Type u := Iterator σ → ParseResult σ α
 
 open ParseResult
 
+protected def run (p : Parsec σ α) (s : σ) : Except String α :=
+  match p (iter s) with
+  | success _ res => Except.ok res
+  | error it err  => Except.error s!"offset {repr it.i}: {err}"
+
 -- Usually, we compose parsers before applying the composition to the
 -- iterator/source. However, we might want to parse out an intermediate
 -- result and then continue parsing the resulting iterator. `deparse` is
@@ -41,6 +46,12 @@ open ParseResult
 def deparse : ParseResult σ α → Iterator σ
   | success it _ => it
   | error   it _ => it
+
+-- Just in case we can't or don't want to use `run`,
+-- we can take a `ParseResult` and discard all error data for an `Option`.
+def unwrap : ParseResult σ α → Option α
+  | success _ res => some res
+  | error   _   _ => none
 
 instance (α : Type u) : Inhabited (Parsec σ α) :=
   ⟨λ it => error it ""⟩
@@ -75,8 +86,14 @@ def attempt (p : Parsec σ α) : Parsec σ α := λ it =>
   | success rem res => success rem res
   | error _ err => error it err
 
+@[inline]
+def optionalP (p : Parsec σ α) : Parsec σ PUnit := λ it =>
+  match p it with
+  | success rem _ => success rem PUnit.unit
+  | error _ _     => success it PUnit.unit
+
 instance : Alternative (Parsec σ) :=
-{ failure := fail "", orElse := orElse }
+  { failure := fail "", orElse }
 
 ---------------------------------
 --     Semantic combinators
