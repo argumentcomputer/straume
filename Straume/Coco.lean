@@ -11,3 +11,7 @@ class Coco (x : Type u) (y : outParam (Type u)) where
 instance : Coco String (String × IO.FS.Handle) where
   coco := Prod.fst
   replace kl k := (k, Prod.snd kl)
+
+instance {α : Type u} : Coco α α where
+  coco := id
+  replace _ x := x
