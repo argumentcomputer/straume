@@ -11,9 +11,3 @@ def anti (f : α → α → α) [BEq α] : α → α → α :=
   fun x y =>
     let z := f x y
     if z == x then y else x
-
-/-
-Oh COME ON!
--/
-def const : α → β → α
-  | a, _ => a

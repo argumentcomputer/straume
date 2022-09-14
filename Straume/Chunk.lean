@@ -1,9 +1,7 @@
 import Straume.Zeptoparsec
 import Straume.Iterator
-import Straume.Combinators
 
 open Straume.Iterator (Iterable Iterator)
-open Straume.Combinators (const)
 
 /- Chunks bundle Stream data into objects. The benchmark for the good UX for
 those is for them to be parsable entirely with a Megaparsec. -/
@@ -130,5 +128,5 @@ instance [Iterable α β] [Terminable f] [Inhabited α] [BEq α]
     let g := Iterable.extract {it₁ with s := coreturn it₁.s}
                               {it₂ with s := coreturn it₂.s}
     -- TODO: is this correct?
-     if g == default then mkNil else (const g) <$> it₁.s
+     if g == default then mkNil else (Function.const α g) <$> it₁.s
   curr it := Iterable.curr {it with s := coreturn it.s}
