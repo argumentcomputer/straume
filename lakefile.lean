@@ -6,7 +6,7 @@ package Straume
 lean_lib Straume
 
 require LSpec from git
-  "https://github.com/yatima-inc/LSpec.git" @ "7e2d41644519e8c437fbe7461544eaa855738f73"
+  "https://github.com/yatima-inc/LSpec.git" @ "a8dc2f38fc38f16efcc877ca8a4c7b37d3965db0"
 
 @[defaultTarget]
 lean_exe straume {
