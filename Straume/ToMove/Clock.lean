@@ -1,4 +1,4 @@
-import Straume.Prob.Ordering
+import Straume.ToMove.Ordering
 
 namespace Straume.Clock
 

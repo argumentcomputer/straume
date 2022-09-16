@@ -1,4 +1,4 @@
-import Straume.Prob
+import Straume.ToMove.Prob
 
 /-
 Exports Straume.Prob.Ordering.Comparable.FalsePositive.Partial typeclass.
