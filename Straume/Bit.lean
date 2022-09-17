@@ -61,7 +61,7 @@ def List.extract (l : List α) (b : Nat) (e : Nat) : List α :=
     let lₐ := l.drop b
     lₐ.take (e - b)
 
--- Interprets a `List Bit` as a `Nat`, taking `Endian`ness into consideration.
+/-- Interprets a `List Bit` as a `Nat`, taking `Endian`ness into consideration. -/
 def bitsToNat (l: List Bit) (en : Endian := big) : Nat :=
   let rec go
     | [], acc => acc
@@ -69,7 +69,9 @@ def bitsToNat (l: List Bit) (en : Endian := big) : Nat :=
   let bits := if en = big then l else List.reverse l
   go bits default
 
--- Takes first `n` elems of the `List Bit` and interprets them as a `Nat`.
--- Returns `none` if the list is shorter than `n`.
+/--
+Takes first `n` elems of the `List Bit` and interprets them as a `Nat`.
+Returns `none` if the list is shorter than `n`.
+-/
 def someBitsToNat? (n : Nat) (l: List Bit) (en : Endian := big) : Option Nat :=
   if n > l.length || n = 0 then .none else .some $ bitsToNat (l.take n) en
