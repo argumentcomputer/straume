@@ -10,7 +10,7 @@ with a way to work with greater-than-RAM and infinite streams.
 -/
 
 open Straume (Chunk Terminable coreturn)
-open Straume.Flood (Flood)
+open Straume.Flood
 open Straume.Iterator (Iterable iter Bijection)
 
 universe u v

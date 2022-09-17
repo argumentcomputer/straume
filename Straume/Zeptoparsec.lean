@@ -1,8 +1,9 @@
 import Straume.Iterator
+
+open Straume
 open Straume.Iterator
 
-/-
-
+/-!
 This is a library defining a simplistic parser, modeled after Parsec.lean.
 Three type pairs are provided: String↔Char, ByteArray↔UInt8, and List Bit↔Bit.
 
@@ -14,13 +15,11 @@ scaffolding in Iterator.lean, currently:
 
 To use Zeptoparsec, compose all the combinators before applying them
 to the source iterator.
-
 -/
 
 namespace Zeptoparsec
 
-universe u
-universe v
+universe u v
 
 variable {σ : Type u} [Iterable σ ε] [Inhabited σ] [DecidableEq σ] [DecidableEq ε] [Inhabited ε]
 

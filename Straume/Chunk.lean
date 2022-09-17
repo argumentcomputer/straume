@@ -1,7 +1,7 @@
 import Straume.Zeptoparsec
 import Straume.Iterator
 
-open Straume.Iterator (Iterable Iterator)
+open Straume.Iterator (Iterable)
 
 /- Chunks bundle Stream data into objects. The benchmark for the good UX for
 those is for them to be parsable entirely with a Megaparsec. -/
