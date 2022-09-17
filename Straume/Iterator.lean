@@ -1,19 +1,26 @@
 import Straume.Bit
+
 open Bit
 
-namespace Straume.Iterator
 universe u
 
-/-
-  We implement a `Repr` instance for `ByteArray` instead of a `ToString`
-  instance for `Iterator α`. At this point, this is a deliberate choice:
-  it's possible we might want to write ToString instances to only show
-  the "remaining" part of the iterator, i.e. a slice of s from i to the end.
+section iterator
 
-  `Repr ByteArray`, however, we need for debug.
+namespace Straume
+
+/-
+We implement a `Repr` instance for `ByteArray` instead of a `ToString`
+instance for `Iterator α`. At this point, this is a deliberate choice:
+it's possible we might want to write ToString instances to only show
+the "remaining" part of the iterator, i.e. a slice of s from i to the end.
+
+`Repr ByteArray`, however, we need for debug.
   TODO?
 -/
 
+/-
+TODO: Move to YatimaStdLib?
+-/
 instance : DecidableEq ByteArray
   | a, b => match decEq a.data b.data with
     | isTrue h₁  => isTrue $ congrArg ByteArray.mk h₁
@@ -26,6 +33,12 @@ structure Iterator (α : Type u) where
   s : α
   i : Nat
   deriving DecidableEq, Repr
+
+end Straume
+
+end iterator
+
+namespace Straume.Iterator
 
 def iter (s : α) : Iterator α :=
   ⟨s, 0⟩
