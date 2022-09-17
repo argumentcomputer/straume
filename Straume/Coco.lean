@@ -1,4 +1,4 @@
-namespace Straume.Coco
+namespace Straume
 
 /--
 `Coco`s are `y`s that carry and allow to swap out `x`s.
