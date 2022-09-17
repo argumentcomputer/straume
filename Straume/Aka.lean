@@ -9,7 +9,7 @@ This module is designed first and foremost to provide Megaparsec users
 with a way to work with greater-than-RAM and infinite streams.
 -/
 
-open Straume.Chunk (Chunk Terminable coreturn)
+open Straume (Chunk Terminable coreturn)
 open Straume.Coco (Coco)
 open Straume.Flood (Flood)
 open Straume.Iterator (Iterable iter Bijection)
