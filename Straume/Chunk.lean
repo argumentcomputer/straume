@@ -5,9 +5,9 @@ open Straume.Iterator (Iterable Iterator)
 
 /- Chunks bundle Stream data into objects. The benchmark for the good UX for
 those is for them to be parsable entirely with a Megaparsec. -/
-namespace Straume.Chunk
-universe u
+namespace Straume
 
+universe u
 
 /-
 A way to terminate a stream.
