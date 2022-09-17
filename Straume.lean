@@ -1,14 +1,9 @@
 import Straume.Aka
-import Straume.Buffer
 import Straume.Chunk
-import Straume.Clock
 import Straume.Coco
 import Straume.Flood
 import Straume.Iterator
 import Straume.MonadEmit
-import Straume.Pos
-import Straume.Prob.Ordering
-import Straume.Uni
 import Straume.Zeptoparsec
 
 namespace Straume
@@ -56,5 +51,5 @@ instance
   {a : Type u}  [Iterable v a]
   : @Straume m s f v a where
   take1 source bufferSize := Aka.take1 source bufferSize
-  takeN readQty source bufferSize := Aka.takeN readQty source bufferSize
+  takeN readQty source bufferSize := Aka.takeN source readQty bufferSize
   takeWhile p source bufferSize := Aka.takeWhile p source bufferSize
