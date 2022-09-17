@@ -1,9 +1,11 @@
-namespace Straume.MonadEmit
+namespace Straume
 
 class MonadEmit (m : Type u → Type v) (source : Type u) (value : Type u) where
   askFrom : source → Nat → m (value × source)
 
-export MonadEmit (askFrom)
+end Straume
+
+namespace Straume.MonadEmit
 
 instance : MonadEmit IO IO.FS.Handle ByteArray where
   askFrom src n := do
