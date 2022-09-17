@@ -2,7 +2,7 @@ import Straume.MonadEmit
 
 open Straume.MonadEmit (readStringN)
 
-namespace Straume.Flood
+namespace Straume
 
 /- A way to flood a buffer of some source `s` with more data. -/
 class Flood (m : Type u → Type v)
