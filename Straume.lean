@@ -28,7 +28,7 @@ class Straume (m : Type u → Type v)
               (s : Type u)
               (f : Type u → Type u)
               (v : Type u)
-              {a : outParam (Type u)} where
+              (a : outParam (Type u)) where
   take1 (source : s) (bufferSize := 2048)
         : m (f a × s)
   takeN (readQty : Nat) (source : s) (bufferSize := 2048)
@@ -49,7 +49,7 @@ instance
   {f : Type u → Type u}  [Terminable f]
   {v : Type u}  [Inhabited v] [Coco v s] [Inhabited (m (f v × s))]
   {a : Type u}  [Iterable v a]
-  : @Straume m s f v a where
+  : Straume m s f v a where
   take1 source bufferSize := Aka.take1 source bufferSize
   takeN readQty source bufferSize := Aka.takeN source readQty bufferSize
   takeWhile p source bufferSize := Aka.takeWhile p source bufferSize
