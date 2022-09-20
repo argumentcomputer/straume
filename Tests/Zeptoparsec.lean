@@ -4,8 +4,9 @@ import Straume.Zeptoparsec
 import Straume.Bit
 import Straume.Combinators
 
-open Straume.Combinators
-open Straume.Iterator
+open Straume
+open Combinators
+open Iterator
 open Zeptoparsec
 open ParseResult
 
@@ -25,7 +26,7 @@ def monadTest : TestSeq :=
   let t := Zeptoparsec.pure 'T' $ next srcStr
   test "Zeptoparsec.pure works" (anyChar srcStr = t) $
   test "Zeptoparsec.bind works" $
-    (pstring "T" >>= const (return 'T')) srcStr = t
+    (pstring "T" >>= Function.const String (return 'T')) srcStr = t
 
 def someCharsTest : TestSeq :=
   let pRes := someChars anyChar 4 srcStr

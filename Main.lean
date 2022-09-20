@@ -1,9 +1,9 @@
 import Straume
 
-open Straume.Chunk in
 open Straume in
+open Chunk in
 open Zeptoparsec in
-open Straume.Iterator in
+open Iterator in
 
 def main : IO Unit := do
   IO.println "STREAM DEMO 9000! NOW WORKING!"

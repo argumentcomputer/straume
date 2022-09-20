@@ -3,7 +3,8 @@ import Straume.Bit
 import Straume.Iterator
 
 open LSpec
-open Straume.Iterator
+open Straume
+open Iterator
 open Bit
 
 def str : Iterator String := iter "This is a test string of 39 characters."
