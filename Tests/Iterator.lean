@@ -1,10 +1,12 @@
 import LSpec
-import Straume.Bit
+
+import YatimaStdLib
+
 import Straume.Iterator
 
 open LSpec
 open Straume.Iterator
-open Bit
+open ByteArray hiding toList
 
 def str : Iterator String := iter "This is a test string of 39 characters."
 def bits : Iterator (List Bit) := iter $ pad 10 $ natToBits 43
@@ -67,7 +69,7 @@ def main := lspecIO $
   forwardTest "List Bit" str ++
 
   singletonTest "String" (iter ".") ++
-  singletonTest "List Bit" (iter [one]) ++
+  singletonTest "List Bit" (iter [Bit.one]) ++
   singletonTest "ByteArray" (iter $ List.toByteArray [42]) ++
 
   emptyTest "String" (iter "") ++

@@ -1,5 +1,6 @@
-import Straume.Bit
-open Bit
+import YatimaStdLib
+
+open ByteArray
 
 namespace Straume.Iterator
 universe u
