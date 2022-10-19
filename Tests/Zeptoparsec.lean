@@ -1,8 +1,12 @@
 import LSpec
+
+import YatimaStdLib
+
 import Straume.Iterator
 import Straume.Zeptoparsec
-import Straume.Bit
 import Straume.Combinators
+
+open ByteArray
 
 open Straume.Combinators
 open Straume.Iterator
