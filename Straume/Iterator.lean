@@ -1,7 +1,5 @@
 import YatimaStdLib
 
-open ByteArray
-
 namespace Straume.Iterator
 universe u
 
@@ -21,7 +19,7 @@ instance : DecidableEq ByteArray
     | isFalse h₂ => isFalse $ fun h => by cases h; exact (h₂ rfl)
 
 instance : Repr ByteArray where
-  reprPrec ba _ := toString ba
+  reprPrec ba _ := ba.toString
 
 structure Iterator (α : Type u) where
   s : α
@@ -85,7 +83,7 @@ instance : Iterable (List Bit) Bit where
   curr | ⟨s, i⟩ => let i' := if i < s.length then i else s.length - 1
       -- pos shouldn't increase if ¬s.hasNext, but it's possible to construct
       -- such an iterator manually, so we have to return the last byte.
-    s.get! i'
+    if s.isEmpty then default else s.get! i'
 
 def forward [Iterable α β] : Iterator α → Nat → Iterator α
   | it, 0   => it

@@ -6,8 +6,6 @@ import Straume.Iterator
 import Straume.Zeptoparsec
 import Straume.Combinators
 
-open ByteArray
-
 open Straume.Combinators
 open Straume.Iterator
 open Zeptoparsec
@@ -55,7 +53,7 @@ def asciiTest : TestSeq :=
 
 open Bit
 
-def srcBits : Iterator (List Bit) := iter $ pad 10 $ natToBits 43
+def srcBits : Iterator (List Bit) := iter $ listPad 10 $ Nat.toBits 43
 
 def manyRepsTest : TestSeq :=
   test "We can parse out groups of max 3 bits" $
