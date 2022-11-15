@@ -111,7 +111,6 @@ partial def takeWhile
   takeWhileDo φ src b Terminable.mkNil
 
 open Straume.Combinators
-#check λs => Straume.Aka.takeWhile (const true) s 2048
 
 -------------------------------
 ----      chunkLength      ----
