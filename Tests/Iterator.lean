@@ -1,7 +1,5 @@
 import LSpec
 
-import YatimaStdLib
-
 import Straume.Iterator
 
 open LSpec

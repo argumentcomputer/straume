@@ -1,4 +1,4 @@
-import YatimaStdLib
+import YatimaStdLib.ByteArray
 
 namespace Straume.Iterator
 universe u
