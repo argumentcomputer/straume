@@ -96,7 +96,7 @@ private partial def takeWhileDo
           Terminable.mkCont $ Iterable.push (coreturn acc) c
       -- fin cases
       | (.none, .some ()) =>
-        pure (Terminable.mkFin $ coreturn acc, stream)
+        pure (Terminable.mkFin $ Iterable.push (coreturn acc) c, stream)
       -- nil case
       | _otherwise => pure (acc, stream₀)
     else
