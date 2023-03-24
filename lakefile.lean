@@ -6,10 +6,10 @@ package Straume
 lean_lib Straume
 
 require LSpec from git
-    "https://github.com/yatima-inc/LSpec" @ "88f7d23e56a061d32c7173cea5befa4b2c248b41"
+  "https://github.com/lurk-lab/LSpec" @ "88f7d23e56a061d32c7173cea5befa4b2c248b41"
 
 require YatimaStdLib from git
-  "https://github.com/yatima-inc/YatimaStdLib.lean" @ "856a4e605bc55e242202459871cdcca0b4ba857e"
+  "https://github.com/lurk-lab/YatimaStdLib.lean" @ "856a4e605bc55e242202459871cdcca0b4ba857e"
 
 @[default_target]
 lean_exe straume where
