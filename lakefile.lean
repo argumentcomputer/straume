@@ -9,7 +9,7 @@ require LSpec from git
   "https://github.com/lurk-lab/LSpec" @ "88f7d23e56a061d32c7173cea5befa4b2c248b41"
 
 require YatimaStdLib from git
-  "https://github.com/lurk-lab/YatimaStdLib.lean" @ "f549e2a841b0641b9385ecf41a270142b7ae506a"
+  "https://github.com/lurk-lab/YatimaStdLib.lean" @ "974c288349a412aea92bb0780efc81fa5f79e442"
 
 @[default_target]
 lean_exe straume where
