@@ -4,9 +4,9 @@
  [{"git":
    {"url": "https://github.com/lurk-lab/YatimaStdLib.lean",
     "subDir?": null,
-    "rev": "856a4e605bc55e242202459871cdcca0b4ba857e",
+    "rev": "f549e2a841b0641b9385ecf41a270142b7ae506a",
     "name": "YatimaStdLib",
-    "inputRev?": "856a4e605bc55e242202459871cdcca0b4ba857e"}},
+    "inputRev?": "f549e2a841b0641b9385ecf41a270142b7ae506a"}},
   {"git":
    {"url": "https://github.com/lurk-lab/LSpec",
     "subDir?": null,
