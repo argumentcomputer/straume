@@ -105,4 +105,5 @@ def toList (src : α) [Iterable α β] : List β := toList' $ iter src
 -- i.e. `Char` can only be gotten by iterating over `String`s.
 class Bijection (β : Type u) (α : outParam (Type u))
 
+set_option synthInstance.checkSynthOrder false in
 instance [Iterable α β] : Bijection β α := {}

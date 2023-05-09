@@ -1,5 +1,5 @@
 {"version": 4,
- "packagesDir": "./lake-packages",
+ "packagesDir": "lake-packages",
  "packages":
  [{"git":
    {"url": "https://github.com/lurk-lab/YatimaStdLib.lean",
@@ -14,8 +14,8 @@
     "name": "LSpec",
     "inputRev?": "88f7d23e56a061d32c7173cea5befa4b2c248b41"}},
   {"git":
-   {"url": "https://github.com/leanprover/std4/",
+   {"url": "https://github.com/leanprover/std4",
     "subDir?": null,
-    "rev": "fde95b16907bf38ea3f310af406868fc6bcf48d1",
+    "rev": "6006307d2ceb8743fea7e00ba0036af8654d0347",
     "name": "std",
-    "inputRev?": "fde95b16907bf38ea3f310af406868fc6bcf48d1"}}]}
+    "inputRev?": "6006307d2ceb8743fea7e00ba0036af8654d0347"}}]}
