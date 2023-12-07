@@ -1,4 +1,4 @@
-import YatimaStdLib.ByteArray
+import YatimaStdLib.Bit
 
 namespace Straume.Iterator
 universe u
@@ -17,9 +17,6 @@ instance : DecidableEq ByteArray
   | a, b => match decEq a.data b.data with
     | isTrue h₁  => isTrue $ congrArg ByteArray.mk h₁
     | isFalse h₂ => isFalse $ fun h => by cases h; exact (h₂ rfl)
-
-instance : Repr ByteArray where
-  reprPrec ba _ := ba.toString
 
 structure Iterator (α : Type u) where
   s : α
@@ -79,7 +76,7 @@ instance : Iterable (List Bit) Bit where
   extract
     | ⟨s₁, b⟩, ⟨s₂, e⟩ =>
       if s₁ ≠ s₂ then default
-      else List.extract s₁ b e
+      else (s₁.drop b).take (e - b)
   curr | ⟨s, i⟩ => let i' := if i < s.length then i else s.length - 1
       -- pos shouldn't increase if ¬s.hasNext, but it's possible to construct
       -- such an iterator manually, so we have to return the last byte.

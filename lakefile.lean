@@ -6,13 +6,14 @@ package Straume
 lean_lib Straume
 
 require std from git
-  "https://github.com/leanprover/std4" @ "6006307d2ceb8743fea7e00ba0036af8654d0347"
+  "https://github.com/leanprover/std4" @ "9e37a01f8590f81ace095b56710db694b5bf8ca0"
 
 require LSpec from git
-  "https://github.com/lurk-lab/LSpec" @ "88f7d23e56a061d32c7173cea5befa4b2c248b41"
+  "https://github.com/lurk-lab/LSpec" @ "3388be5a1d1390594a74ec469fd54a5d84ff6114"
 
 require YatimaStdLib from git
-  "https://github.com/lurk-lab/YatimaStdLib.lean" @ "974c288349a412aea92bb0780efc81fa5f79e442"
+  "https://github.com/lurk-lab/YatimaStdLib.lean" @ "3037f0c14128751b95510c2723f067ec7a494f08"
+
 
 @[default_target]
 lean_exe straume where
